@@ -1,0 +1,2577 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1f2a33">
+  <meta name="description" content="鉄工所向け 材料拾い出し・定尺切断最適化">
+  <title>切断最適化 | 材料ロス削減</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f2a33'/%3E%3Crect x='4' y='13' width='10' height='6' fill='%23e8590c'/%3E%3Crect x='16' y='13' width='7' height='6' fill='%23e8590c'/%3E%3Crect x='25' y='13' width='3' height='6' fill='%23889'/%3E%3C/svg%3E">
+  <style>
+:root {
+  --bg: #f3f2ee;
+  --surface: #ffffff;
+  --ink: #1c2227;
+  --muted: #646b72;
+  --line: #d9d6ce;
+  --line-soft: #ebe8e1;
+  --bar: #1f2a33;
+  --accent: #d9480f;
+  --accent-ink: #ffffff;
+  --accent-soft: #fff1e8;
+  --steel: #46627c;
+  --steel-soft: #dfe7ee;
+  --ok: #2b7a3d;
+  --ok-soft: #e4f3e7;
+  --warn: #9a5b00;
+  --warn-soft: #fff4dc;
+  --err: #b42318;
+  --err-soft: #fdecea;
+  --rem: #b9b2a3;
+  --radius: 10px;
+  --shadow: 0 1px 2px rgba(20, 24, 28, 0.06), 0 1px 1px rgba(20, 24, 28, 0.04);
+  --font: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic UI", Meiryo, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15191d;
+    --surface: #1e2429;
+    --ink: #e7e9eb;
+    --muted: #9aa3ab;
+    --line: #343c43;
+    --line-soft: #2a3137;
+    --bar: #0e1215;
+    --accent: #f76707;
+    --accent-soft: #3a2415;
+    --steel: #7fa2c2;
+    --steel-soft: #26333f;
+    --ok: #69c47f;
+    --ok-soft: #1c3323;
+    --warn: #f0b44c;
+    --warn-soft: #3a2f17;
+    --err: #ff8a80;
+    --err-soft: #3d1f1d;
+    --rem: #6c665b;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.55;
+  font-variant-numeric: tabular-nums;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+a { color: var(--steel); }
+h1, h2, h3 { line-height: 1.3; margin: 0 0 0.5em; }
+h1 { font-size: 1.45rem; }
+h2 { font-size: 1.1rem; }
+h3 { font-size: 0.95rem; margin-top: 1.2em; color: var(--muted); font-weight: 600; letter-spacing: 0.04em; }
+small, .small { font-size: 0.82rem; }
+.muted { color: var(--muted); }
+.warn { color: var(--warn); }
+.err-t { color: var(--err); font-weight: 600; }
+.na { color: var(--muted); }
+.r { text-align: right; }
+.unit { color: var(--muted); font-weight: 400; font-size: 0.85em; }
+
+/* ---------- app bar */
+.appbar {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 0 16px; padding-top: env(safe-area-inset-top);
+  min-height: 52px;
+  background: var(--bar); color: #fff;
+}
+.brand { color: #fff; text-decoration: none; font-weight: 700; display: flex; align-items: center; gap: 8px; letter-spacing: 0.04em; }
+.logo { width: 22px; height: 10px; display: inline-block; background: linear-gradient(90deg, var(--accent) 0 44%, transparent 44% 50%, var(--accent) 50% 78%, transparent 78% 84%, #8a8f96 84%); border-radius: 2px; }
+.appbar nav { display: flex; gap: 4px; }
+.appbar nav a { color: #c9d1d8; text-decoration: none; padding: 14px 10px; font-size: 0.92rem; border-bottom: 3px solid transparent; }
+.appbar nav a.active { color: #fff; border-bottom-color: var(--accent); }
+
+.container { max-width: 980px; margin: 0 auto; padding: 16px 16px 120px; }
+
+/* ---------- common blocks */
+.card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 16px; margin-bottom: 14px; box-shadow: var(--shadow);
+}
+.page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 4px 0 14px; }
+.page-head h1 { margin: 0; }
+.back { text-decoration: none; font-weight: 600; padding: 6px 0; }
+.section-h { font-size: 1rem; margin: 18px 0 8px; }
+.section-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.small-h { font-size: 0.95rem; }
+.grid-2 { display: grid; grid-template-columns: 1fr; gap: 0 14px; }
+@media (min-width: 640px) { .grid-2 { grid-template-columns: 1fr 1fr; } }
+.empty { text-align: center; padding: 28px 16px; }
+.danger-zone { margin-top: 28px; text-align: center; }
+
+/* ---------- form */
+.field { margin-bottom: 12px; min-width: 0; }
+.field label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; }
+input, select {
+  width: 100%; font: inherit; font-size: 16px; color: var(--ink);
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+  padding: 10px 12px; min-height: 46px;
+}
+input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
+input[aria-invalid="true"] { border-color: var(--err); background: var(--err-soft); }
+.field-error { color: var(--err); font-size: 0.82rem; margin-top: 4px; }
+.input-title { font-size: 1.15rem; font-weight: 700; }
+fieldset { border: 1px solid var(--line-soft); border-radius: 8px; padding: 12px; margin: 0 0 14px; }
+legend { font-weight: 700; font-size: 0.9rem; padding: 0 6px; }
+.check { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.check input { width: 22px; min-height: 22px; height: 22px; }
+.form-errors ul { margin: 0 0 12px; padding: 10px 10px 10px 28px; background: var(--err-soft); color: var(--err); border-radius: 8px; }
+.h-form { font-size: 1.2rem; }
+.dims-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 0 10px; }
+
+/* ---------- buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 44px; padding: 8px 16px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  font: inherit; font-weight: 600; text-decoration: none; cursor: pointer; white-space: nowrap;
+}
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { filter: brightness(1.06); }
+.btn.ghost { background: transparent; }
+.btn.danger { color: var(--err); }
+.btn.small { min-height: 36px; padding: 4px 12px; font-size: 0.88rem; }
+.btn.block { width: 100%; }
+.btn.lg { min-height: 54px; font-size: 1.05rem; }
+.actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; margin-top: 8px; }
+.actions.left { justify-content: flex-start; }
+.icon-btn {
+  min-height: 40px; min-width: 52px; padding: 4px 10px; border-radius: 8px;
+  border: 1px solid var(--line); background: transparent; color: var(--ink); font: inherit; font-size: 0.85rem; cursor: pointer;
+}
+.icon-btn.danger { color: var(--err); }
+
+/* ---------- home */
+.project-list { list-style: none; margin: 0; padding: 0; }
+.project-item { display: grid; gap: 2px; text-decoration: none; color: inherit; }
+.project-item:hover { border-color: var(--steel); }
+.pi-name { font-weight: 700; font-size: 1.05rem; }
+.pi-client { color: var(--muted); font-size: 0.9rem; }
+.pi-meta { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 0.82rem; }
+.new-form .actions { margin-top: 0; }
+
+/* ---------- project */
+.add-card h2 { margin-bottom: 10px; }
+.add-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.f-len input { font-size: 1.2rem; font-weight: 700; }
+.stepper { display: grid; grid-template-columns: 46px 1fr 46px; }
+.stepper input { border-radius: 0; text-align: center; font-size: 1.2rem; font-weight: 700; border-left: 0; border-right: 0; padding: 10px 4px; }
+.step { border: 1px solid var(--line); background: var(--line-soft); font-size: 1.3rem; color: var(--ink); cursor: pointer; }
+.step:first-child { border-radius: 8px 0 0 8px; }
+.step:last-child { border-radius: 0 8px 8px 0; }
+.line-group { padding: 12px 12px 4px; }
+.lg-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.lg-sum { color: var(--muted); font-size: 0.88rem; }
+.type-tag { display: inline-block; font-size: 0.72rem; font-weight: 700; color: var(--steel); background: var(--steel-soft); border-radius: 4px; padding: 1px 6px; margin-right: 6px; vertical-align: 2px; }
+.lines { list-style: none; margin: 0; padding: 0; }
+.line {
+  display: grid; grid-template-columns: auto auto 1fr auto; align-items: center; gap: 4px 12px;
+  padding: 8px 0; border-top: 1px solid var(--line-soft);
+}
+.l-len { font-size: 1.15rem; font-weight: 700; }
+.l-len small, .l-qty small { font-size: 0.75rem; color: var(--muted); margin-left: 2px; font-weight: 400; }
+.l-qty { font-weight: 600; }
+.l-label { color: var(--muted); font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.l-act { display: flex; gap: 6px; }
+.line.editing { display: block; background: var(--accent-soft); margin: 0 -12px; padding: 12px; }
+@media (max-width: 420px) {
+  .line { grid-template-columns: auto 1fr auto; }
+  .l-label { grid-column: 1 / -1; grid-row: 2; }
+  .l-label:empty { display: none; }
+  .l-act { grid-row: 1; grid-column: 3; }
+}
+.conditions summary { font-weight: 700; cursor: pointer; padding: 4px 0; }
+.conditions[open] summary { margin-bottom: 8px; }
+.src { display: inline-block; margin-left: 6px; font-size: 0.72rem; color: var(--muted); }
+.sticky-cta {
+  position: sticky; bottom: 0; z-index: 10; margin: 18px -16px 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, var(--bg) 70%, transparent);
+}
+
+/* ---------- tables */
+.table-wrap { overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; }
+.table th, .table td { padding: 8px 6px; border-bottom: 1px solid var(--line-soft); text-align: left; vertical-align: top; }
+.table th { font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+.table th.r, .table td.r { text-align: right; white-space: nowrap; }
+.table tfoot th { color: var(--ink); font-size: 0.95rem; border-bottom: 0; }
+
+/* ---------- master */
+.mat-list { list-style: none; margin: 0; padding: 0; }
+.mat-list a { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px 0; border-top: 1px solid var(--line-soft); color: inherit; text-decoration: none; }
+.mat-list a:hover .m-spec { color: var(--accent); }
+.m-spec { font-weight: 700; }
+.m-stock { color: var(--muted); }
+.mat-group .lg-head { align-items: center; }
+.stock-list { list-style: none; padding: 0; margin: 0 0 8px; }
+.stock-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 0 10px; align-items: end; }
+.stock-row.sheet { grid-template-columns: 1fr 1fr 1fr auto; }
+.stock-row .icon-btn { margin-bottom: 15px; min-height: 46px; }
+@media (max-width: 480px) {
+  .stock-row.sheet { grid-template-columns: 1fr 1fr; }
+  .stock-row.sheet .icon-btn { grid-column: 2; justify-self: end; }
+}
+
+/* ---------- result */
+.result-head h1 { margin: 0 0 2px; }
+.result-head p { margin: 0; }
+.result-head { margin-bottom: 14px; }
+.legend-row { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.85rem; margin-bottom: 6px; }
+.sw { display: inline-block; width: 18px; height: 12px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.sw.piece { background: var(--steel); }
+.sw.cut { background: var(--accent); width: 4px; }
+.sw.trim { background: repeating-linear-gradient(-45deg, var(--muted) 0 2px, transparent 2px 4px); border: 1px solid var(--muted); }
+.sw.rem { background: repeating-linear-gradient(45deg, var(--rem) 0 3px, transparent 3px 6px); border: 1px solid var(--rem); }
+.job-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; align-items: flex-start; }
+.job-head h2 { margin: 2px 0 0; font-size: 1.2rem; }
+.badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.badge { display: inline-block; font-size: 0.78rem; font-weight: 700; padding: 3px 8px; border-radius: 999px; }
+.badge.ok { background: var(--ok-soft); color: var(--ok); }
+.badge.warn { background: var(--warn-soft); color: var(--warn); }
+.badge.err { background: var(--err-soft); color: var(--err); }
+.errors { color: var(--err); background: var(--err-soft); border-radius: 8px; padding: 10px 10px 10px 28px; margin: 10px 0; }
+.cond-line { font-size: 0.85rem; color: var(--muted); background: var(--line-soft); border-radius: 6px; padding: 8px 10px; margin: 10px 0; }
+.cond-line b { color: var(--ink); }
+.stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 12px 0 4px; }
+@media (min-width: 720px) { .stats { grid-template-columns: repeat(4, 1fr); } }
+.stat { border: 1px solid var(--line-soft); border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; min-width: 0; }
+.stat .k { font-size: 0.76rem; color: var(--muted); font-weight: 600; }
+.stat .v { font-size: 1.15rem; font-weight: 700; line-height: 1.35; }
+.stat .v small { font-size: 0.72rem; color: var(--muted); font-weight: 500; margin: 0 1px; }
+.stat .sub { font-size: 0.74rem; color: var(--muted); }
+.stat.main { grid-column: 1 / -1; background: var(--accent-soft); border-color: transparent; }
+.stat.main .v b { color: var(--accent); font-size: 1.4rem; }
+@media (min-width: 720px) { .stat.main { grid-column: span 2; grid-row: span 2; justify-content: center; } }
+
+.patterns { list-style: none; margin: 0; padding: 0; }
+.pattern { border-top: 1px solid var(--line-soft); padding: 12px 0; break-inside: avoid; }
+.p-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-bottom: 8px; }
+.p-name { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 6px; background: var(--bar); color: #fff; font-weight: 700; }
+.rep { color: var(--accent); font-size: 1.1rem; }
+.bar { display: flex; height: 34px; border: 1px solid var(--ink); border-radius: 3px; overflow: hidden; background: var(--surface); }
+.seg { flex: 0 0 auto; min-width: 0; height: 100%; position: relative; display: grid; place-items: center; overflow: hidden; }
+.seg.piece { background: var(--steel); color: #fff; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15); }
+.seg.cut { flex: 0 0 3px; background: var(--accent); }
+.seg.trim { background: repeating-linear-gradient(-45deg, var(--muted) 0 2px, transparent 2px 4px); }
+.seg.rem { flex-grow: 1; background: repeating-linear-gradient(45deg, var(--rem) 0 3px, transparent 3px 6px); color: var(--ink); }
+.seg-t { font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+.seg-t.hide { visibility: hidden; }
+.table .mat-row td { font-weight: 700; padding-top: 12px; border-bottom: 0; }
+.table .mat-row + tr td { padding-top: 2px; }
+.seg.rem .seg-t { background: var(--surface); padding: 0 3px; border-radius: 3px; }
+.chips { list-style: none; margin: 8px 0 4px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.chips li { background: var(--steel-soft); border-radius: 6px; padding: 3px 8px; font-size: 0.88rem; }
+.chips .lbl { color: var(--steel); font-weight: 700; }
+.p-foot { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.8rem; color: var(--muted); }
+.rem-t b { color: var(--ink); }
+.skipped .warn { margin: 0 0 4px; }
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; margin-right: 8px; vertical-align: -2px; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- toast */
+.toast {
+  position: fixed; left: 50%; bottom: calc(90px + env(safe-area-inset-bottom)); transform: translate(-50%, 20px);
+  background: var(--bar); color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 0.92rem;
+  opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s; z-index: 50; max-width: calc(100% - 32px);
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.toast.error { background: var(--err); }
+
+/* ---------- print */
+@media print {
+  :root { --bg: #fff; --surface: #fff; --ink: #000; --muted: #444; --line: #999; --line-soft: #ccc; }
+  body { font-size: 11pt; }
+  .appbar, .no-print, .sticky-cta, .danger-zone, .legend { display: none !important; }
+  .container { padding: 0; max-width: none; }
+  .card { box-shadow: none; border: 0; padding: 0; margin-bottom: 14pt; }
+  .job { break-before: auto; }
+  .stat.main, .cond-line { background: none; border: 1px solid #999; }
+  .seg.piece { background: #888 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .seg.cut { background: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .seg, .sw, .badge, .p-name { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  a { color: inherit; text-decoration: none; }
+}
+
+</style>
+</head>
+<body>
+  <header class="appbar">
+    <a class="brand" href="#/"><span class="logo" aria-hidden="true"></span>切断最適化</a>
+    <nav>
+      <a href="#/" data-nav="home">案件</a>
+      <a href="#/master" data-nav="master">材料マスター</a>
+    </nav>
+  </header>
+  <main id="app" class="container" aria-live="polite">
+    <noscript><p>このアプリは JavaScript を有効にしてご利用ください。</p></noscript>
+  </main>
+  <script>globalThis.__STEELCUT_WORKER_SRC__ = "// ---- js/core/cutting1d.js\nconst __m0 = (() => {\n// 一次元切断最適化（角パイプ・丸パイプ・アングル・チャンネル・フラットバー・丸棒）\n// DOM非依存。ブラウザ・Web Worker・Node.js のいずれからも import できる。\n//\n// ■ 切断モデル（すべて整数mm）\n//   定尺 L から部材 l1..ln を切り出すとき、\n//   ・端部切り落とし trim > 0 の場合：先端で trim を落とし、その切断で切断幅 kerf を1回消費\n//   ・部材と部材の間：切断幅 kerf を1回ずつ消費（n-1回）\n//   ・最後の部材のあと残り rest が\n//       rest = 0        … 切断不要（ちょうど使い切り）\n//       0 < rest ≦ kerf … その全量を切断ロスとする（残材なし）\n//       rest > kerf     … 1回切断して kerf を消費、残り rest-kerf を残材とする\n//   収まる条件：(trim>0 ? trim+kerf : 0) + Σl + (n-1)·kerf ≦ L\n//   検算式：Σl + 切断幅ロス + 端部切り落とし + 残材 = L\n//\n// ■ 最適化の評価順（辞書式）\n//   ① 定尺本数　② 購入費用（全定尺に単価がある場合）／購入長さ（単価未登録がある場合）\n//   ③ 端材＋切断ロスの合計（= 購入長さ − 部材合計）\n\nconst DEFAULT_LIMITS = Object.freeze({\n  maxStates: 250_000, // 厳密探索で記憶する状態数の上限\n  maxNodes: 6_000_000, // 切断パターン列挙の上限\n  timeLimitMs: 4000, // 厳密探索の時間上限\n  restarts: 80, // ヒューリスティックの乱択試行回数\n});\n\nclass InputError extends Error {\n  constructor(errors) {\n    super(errors.join('\\n'));\n    this.errors = errors;\n  }\n}\n\nconst sum = (a) => a.reduce((s, v) => s + v, 0);\n\n/** 先端の切り落としで失う長さ（切断幅込み） */\nfunction headLoss(kerf, trim) {\n  return trim > 0 ? trim + kerf : 0;\n}\n\n/**\n * 1本の定尺から部材を切り出したときの内訳を計算する。\n * @param {number} stockLength 定尺長さ\n * @param {number[]} pieceLengths 部材長さ\n */\nfunction layoutBar(stockLength, pieceLengths, kerf, trim) {\n  const n = pieceLengths.length;\n  const pieceSum = sum(pieceLengths);\n  const head = headLoss(kerf, trim);\n  const used = head + pieceSum + (n > 0 ? (n - 1) * kerf : 0);\n  const rest = stockLength - used;\n  if (rest < 0) return { fits: false, stockLength, pieceSum, pieceCount: n, overBy: -rest };\n  let tailCut = 0;\n  let sliver = 0;\n  let remnant = 0;\n  if (rest > kerf) {\n    tailCut = kerf;\n    remnant = rest - kerf;\n  } else if (rest > 0) {\n    sliver = rest;\n  }\n  const cutCount = (trim > 0 ? 1 : 0) + Math.max(0, n - 1) + (rest > 0 ? 1 : 0);\n  const kerfLoss = (trim > 0 ? kerf : 0) + Math.max(0, n - 1) * kerf + tailCut + sliver;\n  const trimLoss = trim > 0 ? trim : 0;\n  return {\n    fits: true,\n    stockLength,\n    pieceSum,\n    pieceCount: n,\n    cutCount,\n    kerfLoss, // 切断幅による損失（切断幅以下で残った切れ端を含む）\n    trimLoss, // 端部切り落とし\n    remnant, // 計算上の残材長さ\n  };\n}\n\n/** 入力を検証し、内部表現に変換する */\nfunction normalizeInput(input) {\n  const errors = [];\n  const isInt = (v) => Number.isSafeInteger(v);\n  const kerf = input.kerf ?? 0;\n  const trim = input.trim ?? 0;\n  if (!isInt(kerf) || kerf < 0) errors.push('切断幅は0以上の整数mmで指定してください');\n  if (!isInt(trim) || trim < 0) errors.push('端部切り落とし寸法は0以上の整数mmで指定してください');\n\n  const stocksIn = input.stocks ?? [];\n  if (stocksIn.length === 0) errors.push('定尺が登録されていません');\n  const seen = new Set();\n  const stocks = [];\n  for (const s of stocksIn) {\n    if (!isInt(s.length) || s.length <= 0) {\n      errors.push(`定尺長さ「${s.length}」が不正です（正の整数mm）`);\n      continue;\n    }\n    if (seen.has(s.length)) {\n      errors.push(`定尺 ${s.length}mm が重複しています`);\n      continue;\n    }\n    if (s.price != null && (!isInt(s.price) || s.price < 0)) {\n      errors.push(`定尺 ${s.length}mm の単価が不正です`);\n      continue;\n    }\n    seen.add(s.length);\n    stocks.push({ length: s.length, price: s.price ?? null });\n  }\n\n  const byLen = new Map();\n  for (const p of input.pieces ?? []) {\n    const name = p.label ? `「${p.label}」` : '';\n    if (!isInt(p.length) || p.length <= 0) {\n      errors.push(`部材${name}の寸法「${p.length}」が不正です（正の整数mm）`);\n      continue;\n    }\n    if (!isInt(p.qty) || p.qty <= 0) {\n      errors.push(`部材${name} ${p.length}mm の本数「${p.qty}」が不正です（1以上の整数）`);\n      continue;\n    }\n    if (!byLen.has(p.length)) byLen.set(p.length, []);\n    byLen.get(p.length).push({ label: p.label ?? '', qty: p.qty });\n  }\n  if (byLen.size === 0 && errors.length === 0) errors.push('部材が入力されていません');\n\n  if (errors.length === 0) {\n    const head = headLoss(kerf, trim);\n    const maxStock = Math.max(...stocks.map((s) => s.length));\n    for (const len of byLen.keys()) {\n      if (head + len > maxStock) {\n        const usable = maxStock - head;\n        errors.push(\n          `部材 ${len}mm は最長の定尺 ${maxStock}mm から切り出せません（端部処理後の有効長さ ${usable}mm）`,\n        );\n      }\n    }\n  }\n  if (errors.length) throw new InputError(errors);\n\n  // 長い順に並べた部材種類\n  const lengths = [...byLen.keys()].sort((a, b) => b - a);\n  const types = lengths.map((len) => ({\n    length: len,\n    demand: sum(byLen.get(len).map((x) => x.qty)),\n    labels: byLen.get(len),\n  }));\n  stocks.sort((a, b) => b.length - a.length);\n  const costBasis = stocks.every((s) => s.price != null) ? 'price' : 'length';\n  return { kerf, trim, stocks, types, costBasis };\n}\n\n// ---------------------------------------------------------------------------\n// 評価値（辞書式）\n// ---------------------------------------------------------------------------\nfunction better(a, b) {\n  if (!b) return true;\n  if (a.bars !== b.bars) return a.bars < b.bars;\n  if (a.cost !== b.cost) return a.cost < b.cost;\n  return a.waste < b.waste;\n}\n\nfunction makeCtx(norm) {\n  const { kerf, trim, stocks, types, costBasis } = norm;\n  const w = types.map((t) => t.length + kerf); // 部材1本が消費する長さ（切断幅込み）\n  const cap = stocks.map((s) => s.length - headLoss(kerf, trim) + kerf); // 定尺の容量\n  const stockCost = stocks.map((s) => (costBasis === 'price' ? s.price : s.length));\n  return { ...norm, w, cap, stockCost };\n}\n\n/** 本数の下限（Martello–Toth L2 を最長定尺の容量で適用） */\nfunction lowerBoundBars(ctx) {\n  const C = Math.max(...ctx.cap);\n  const items = [];\n  ctx.types.forEach((t, i) => {\n    for (let k = 0; k < t.demand; k++) items.push(ctx.w[i]);\n  });\n  const total = sum(items);\n  let best = Math.ceil(total / C);\n  const ks = [...new Set(items.filter((x) => x <= C / 2))];\n  ks.push(0);\n  for (const k of ks) {\n    let n1 = 0;\n    let n2 = 0;\n    let s2 = 0;\n    let s3 = 0;\n    for (const x of items) {\n      if (x > C - k) n1++;\n      else if (x > C / 2) {\n        n2++;\n        s2 += x;\n      } else if (x >= k) s3 += x;\n    }\n    const lb = n1 + n2 + Math.max(0, Math.ceil((s3 - (n2 * C - s2)) / C));\n    if (lb > best) best = lb;\n  }\n  return best;\n}\n\n// ---------------------------------------------------------------------------\n// 厳密解：残り需要ベクトルを状態とする記憶化探索\n//   ・各定尺は「残っている最長の部材を必ず含む」\n//   ・その定尺に対して極大（残りのどの部材ももう入らない）なパターンのみ列挙\n//   この2つの制約の下でも最適解が必ず存在する（部材の入れ替え・後ろの定尺からの移動で示せる）。\n// ---------------------------------------------------------------------------\nconst ABORT = Symbol('abort');\n\nfunction solveExact(ctx, limits) {\n  const T = ctx.types.length;\n  const S = ctx.stocks.length;\n  const memo = new Map();\n  const deadline = Date.now() + limits.timeLimitMs;\n  let nodes = 0;\n  const ZERO = { bars: 0, cost: 0, waste: 0 };\n\n  function patterns(state, f, s) {\n    const out = [];\n    const x = new Array(T).fill(0);\n    const C = ctx.cap[s];\n    function dfs(i, rem) {\n      if (++nodes > limits.maxNodes) throw ABORT;\n      if ((nodes & 0x3fff) === 0 && Date.now() > deadline) throw ABORT;\n      if (i === T) {\n        // 極大性：残りの部材でまだ入るものがあれば不採用\n        for (let j = T - 1; j >= f; j--) {\n          if (state[j] - x[j] > 0) {\n            if (ctx.w[j] <= rem) return;\n            break; // w は降順なので最小のものだけ見ればよい\n          }\n        }\n        out.push(x.slice());\n        return;\n      }\n      if (i < f) return dfs(f, rem);\n      const maxK = Math.min(state[i], Math.floor(rem / ctx.w[i]));\n      const minK = i === f ? 1 : 0;\n      for (let k = maxK; k >= minK; k--) {\n        x[i] = k;\n        dfs(i + 1, rem - k * ctx.w[i]);\n      }\n      x[i] = 0;\n    }\n    if (ctx.w[f] <= C) dfs(f, C);\n    return out;\n  }\n\n  function rec(state) {\n    let f = -1;\n    for (let i = 0; i < T; i++) {\n      if (state[i] > 0) {\n        f = i;\n        break;\n      }\n    }\n    if (f < 0) return ZERO;\n    const key = state.join(',');\n    const hit = memo.get(key);\n    if (hit) return hit;\n    if (memo.size >= limits.maxStates) throw ABORT;\n    let best = null;\n    for (let s = 0; s < S; s++) {\n      for (const x of patterns(state, f, s)) {\n        const child = state.map((v, i) => v - x[i]);\n        const r = rec(child);\n        let pieceSum = 0;\n        for (let i = 0; i < T; i++) pieceSum += x[i] * ctx.types[i].length;\n        const cand = {\n          bars: r.bars + 1,\n          cost: r.cost + ctx.stockCost[s],\n          waste: r.waste + ctx.stocks[s].length - pieceSum,\n          s,\n          x,\n          child,\n        };\n        if (better(cand, best)) best = cand;\n      }\n    }\n    memo.set(key, best);\n    return best;\n  }\n\n  try {\n    let state = ctx.types.map((t) => t.demand);\n    const root = rec(state);\n    const bars = [];\n    let node = root;\n    while (node && node.x) {\n      bars.push({ s: node.s, counts: node.x });\n      state = node.child;\n      node = rec(state);\n    }\n    return { bars, states: memo.size, nodes };\n  } catch (e) {\n    if (e === ABORT) return null;\n    throw e;\n  }\n}\n\n// ---------------------------------------------------------------------------\n// ヒューリスティック（大規模入力用・初期解）\n// ---------------------------------------------------------------------------\n\n/** 有界ナップサック：容量 C に詰める部材本数ベクトル（消費長さ最大） */\nfunction bestFill(ctx, remaining, C) {\n  const items = []; // {type, k, weight}\n  ctx.types.forEach((t, i) => {\n    let left = Math.min(remaining[i], Math.floor(C / ctx.w[i]));\n    let k = 1;\n    while (left > 0) {\n      const take = Math.min(k, left);\n      items.push({ type: i, k: take, weight: take * ctx.w[i] });\n      left -= take;\n      k *= 2;\n    }\n  });\n  const from = new Int32Array(C + 1).fill(-1); // その容量に初めて到達した品目\n  const reach = new Uint8Array(C + 1);\n  reach[0] = 1;\n  for (let it = 0; it < items.length; it++) {\n    const wt = items[it].weight;\n    for (let c = C; c >= wt; c--) {\n      if (!reach[c] && reach[c - wt]) {\n        reach[c] = 1;\n        from[c] = it;\n      }\n    }\n  }\n  let c = C;\n  while (c > 0 && !reach[c]) c--;\n  const x = new Array(ctx.types.length).fill(0);\n  while (c > 0) {\n    const it = items[from[c]];\n    x[it.type] += it.k;\n    c -= it.weight;\n  }\n  return x;\n}\n\nfunction pieceSumOf(ctx, counts) {\n  let s = 0;\n  for (let i = 0; i < counts.length; i++) s += counts[i] * ctx.types[i].length;\n  return s;\n}\nfunction usedOf(ctx, counts) {\n  let s = 0;\n  for (let i = 0; i < counts.length; i++) s += counts[i] * ctx.w[i];\n  return s;\n}\n\n/** 各定尺の内容を収められる最も安い（同額なら短い）定尺に置き換える */\nfunction downsize(ctx, bars) {\n  return bars.map((b) => {\n    const used = usedOf(ctx, b.counts);\n    let bestS = b.s;\n    for (let s = 0; s < ctx.stocks.length; s++) {\n      if (ctx.cap[s] < used) continue;\n      const cs = ctx.stockCost[s];\n      const cb = ctx.stockCost[bestS];\n      if (ctx.cap[bestS] < used || cs < cb || (cs === cb && ctx.stocks[s].length < ctx.stocks[bestS].length)) bestS = s;\n    }\n    return { s: bestS, counts: b.counts };\n  });\n}\n\nfunction scoreBars(ctx, bars) {\n  let cost = 0;\n  let waste = 0;\n  for (const b of bars) {\n    cost += ctx.stockCost[b.s];\n    waste += ctx.stocks[b.s].length - pieceSumOf(ctx, b.counts);\n  }\n  return { bars: bars.length, cost, waste };\n}\n\nfunction sequentialKnapsack(ctx, stockChooser) {\n  const remaining = ctx.types.map((t) => t.demand);\n  const bars = [];\n  while (remaining.some((v) => v > 0)) {\n    let pick = null;\n    for (const s of stockChooser) {\n      const x = bestFill(ctx, remaining, ctx.cap[s]);\n      if (x.every((v) => v === 0)) continue;\n      const ps = pieceSumOf(ctx, x);\n      const ratio = ps / ctx.stocks[s].length;\n      if (!pick || ratio > pick.ratio) pick = { s, x, ratio };\n    }\n    if (!pick) throw new Error('internal: no pattern fits');\n    bars.push({ s: pick.s, counts: pick.x });\n    pick.x.forEach((v, i) => (remaining[i] -= v));\n  }\n  return bars;\n}\n\n/** 並び順を与えた First/Best Fit Decreasing（最長定尺を使用） */\nfunction fitDecreasing(ctx, order, best) {\n  const C = Math.max(...ctx.cap);\n  const sMax = ctx.cap.indexOf(C);\n  const bins = []; // {free, counts}\n  for (const i of order) {\n    const wi = ctx.w[i];\n    let target = null;\n    for (const b of bins) {\n      if (b.free >= wi && (!target || (best ? b.free < target.free : false))) {\n        target = b;\n        if (!best) break;\n      }\n    }\n    if (!target) {\n      target = { free: C, counts: new Array(ctx.types.length).fill(0) };\n      bins.push(target);\n    }\n    target.free -= wi;\n    target.counts[i]++;\n  }\n  return bins.map((b) => ({ s: sMax, counts: b.counts }));\n}\n\n/** 最も詰まりの悪い定尺を他の定尺の空きへ分配して1本減らせないか試す */\nfunction tryEliminate(ctx, bars) {\n  const C = Math.max(...ctx.cap);\n  const sMax = ctx.cap.indexOf(C);\n  let cur = bars.map((b) => ({ s: sMax, counts: b.counts.slice() }));\n  let improved = true;\n  while (improved && cur.length > 1) {\n    improved = false;\n    const order = cur.map((b, i) => [usedOf(ctx, b.counts), i]).sort((a, b) => a[0] - b[0]);\n    for (const [, vi] of order) {\n      const victim = cur[vi];\n      const others = cur.filter((_, i) => i !== vi).map((b) => ({ s: b.s, counts: b.counts.slice(), free: C - usedOf(ctx, b.counts) }));\n      let ok = true;\n      for (let t = 0; t < victim.counts.length && ok; t++) {\n        for (let k = 0; k < victim.counts[t]; k++) {\n          let tgt = null;\n          for (const o of others) if (o.free >= ctx.w[t] && (!tgt || o.free < tgt.free)) tgt = o;\n          if (!tgt) {\n            ok = false;\n            break;\n          }\n          tgt.free -= ctx.w[t];\n          tgt.counts[t]++;\n        }\n      }\n      if (ok) {\n        cur = others.map((o) => ({ s: o.s, counts: o.counts }));\n        improved = true;\n        break;\n      }\n    }\n  }\n  return cur;\n}\n\nfunction mulberry32(seed) {\n  let a = seed >>> 0;\n  return () => {\n    a = (a + 0x6d2b79f5) >>> 0;\n    let t = a;\n    t = Math.imul(t ^ (t >>> 15), t | 1);\n    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);\n    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;\n  };\n}\n\nfunction solveHeuristic(ctx, limits) {\n  const candidates = [];\n  const allS = ctx.stocks.map((_, s) => s);\n  const longest = [ctx.cap.indexOf(Math.max(...ctx.cap))];\n  candidates.push(sequentialKnapsack(ctx, longest));\n  candidates.push(sequentialKnapsack(ctx, allS));\n  const base = [];\n  ctx.types.forEach((t, i) => {\n    for (let k = 0; k < t.demand; k++) base.push(i);\n  });\n  candidates.push(fitDecreasing(ctx, base, false));\n  candidates.push(fitDecreasing(ctx, base, true));\n  const rnd = mulberry32(12345);\n  for (let r = 0; r < limits.restarts; r++) {\n    const order = base.slice();\n    // 降順を保ちつつ近傍をランダムに入れ替える\n    for (let i = 0; i < order.length - 1; i++) {\n      if (rnd() < 0.3) {\n        const j = Math.min(order.length - 1, i + 1 + Math.floor(rnd() * 3));\n        [order[i], order[j]] = [order[j], order[i]];\n      }\n    }\n    candidates.push(fitDecreasing(ctx, order, rnd() < 0.5));\n  }\n  let best = null;\n  let bestScore = null;\n  for (const c of candidates) {\n    for (const variant of [c, tryEliminate(ctx, c)]) {\n      const d = downsize(ctx, variant);\n      const sc = scoreBars(ctx, d);\n      if (better(sc, bestScore)) {\n        best = d;\n        bestScore = sc;\n      }\n    }\n  }\n  return best;\n}\n\n// ---------------------------------------------------------------------------\n// 本数のみの厳密探索（厳密解が上限に達した大規模入力用）\n//   「B本で切り出せるか」を、面積下限による枝刈りと失敗状態の記憶で判定する。\n// ---------------------------------------------------------------------------\nfunction searchBarCount(ctx, lowerBound, upperBound, limits) {\n  const T = ctx.types.length;\n  const C = Math.max(...ctx.cap);\n  const sMax = ctx.cap.indexOf(C);\n  const deadline = Date.now() + limits.timeLimitMs;\n  const failed = new Map(); // state -> この本数以下では不可能と判明した最大本数\n  let nodes = 0;\n\n  function feasible(state, remW, k, out) {\n    if (remW === 0) return true;\n    if (k === 0 || Math.ceil(remW / C) > k) return false;\n    if (++nodes > limits.maxNodes || ((nodes & 0x3ff) === 0 && Date.now() > deadline)) throw ABORT;\n    const key = state.join(',');\n    if ((failed.get(key) ?? -1) >= k) return false;\n    let f = 0;\n    while (state[f] === 0) f++;\n    // 極大パターンを詰まりの良い順に列挙\n    const pats = [];\n    const x = new Array(T).fill(0);\n    (function dfs(i, rem) {\n      if (i === T) {\n        for (let j = T - 1; j >= f; j--) {\n          if (state[j] - x[j] > 0) {\n            if (ctx.w[j] <= rem) return;\n            break;\n          }\n        }\n        pats.push({ x: x.slice(), used: C - rem });\n        return;\n      }\n      const maxK = Math.min(state[i], Math.floor(rem / ctx.w[i]));\n      for (let c = maxK; c >= (i === f ? 1 : 0); c--) {\n        x[i] = c;\n        dfs(i + 1, rem - c * ctx.w[i]);\n      }\n      x[i] = 0;\n    })(f, C);\n    pats.sort((a, b) => b.used - a.used);\n    for (const p of pats) {\n      const child = state.map((v, i) => v - p.x[i]);\n      out.push(p.x);\n      if (feasible(child, remW - p.used, k - 1, out)) return true;\n      out.pop();\n    }\n    failed.set(key, Math.max(failed.get(key) ?? -1, k));\n    return false;\n  }\n\n  const state = ctx.types.map((t) => t.demand);\n  const remW = state.reduce((a, v, i) => a + v * ctx.w[i], 0);\n  try {\n    for (let B = lowerBound; B < upperBound; B++) {\n      const out = [];\n      if (feasible(state, remW, B, out)) return { bars: out.map((x) => ({ s: sMax, counts: x })), barsProven: true };\n    }\n    return { bars: null, barsProven: true }; // 上界（ヒューリスティック解）が最小本数\n  } catch (e) {\n    if (e === ABORT) return { bars: null, barsProven: false };\n    throw e;\n  }\n}\n\n// ---------------------------------------------------------------------------\n// 結果の組み立て\n// ---------------------------------------------------------------------------\nfunction buildResult(ctx, rawBars, meta) {\n  // 同一寸法の部材に符号（ラベル）を順番に割り当てる\n  const labelQueues = ctx.types.map((t) => {\n    const q = [];\n    for (const l of t.labels) for (let k = 0; k < l.qty; k++) q.push(l.label);\n    return q;\n  });\n  const ordered = rawBars\n    .map((b) => ({ ...b, used: usedOf(ctx, b.counts) }))\n    .sort((a, b) => {\n      const d = ctx.stocks[b.s].length - ctx.stocks[a.s].length || b.used - a.used;\n      if (d) return d;\n      const ka = a.counts.join(',');\n      const kb = b.counts.join(',');\n      return ka < kb ? 1 : ka > kb ? -1 : 0;\n    });\n\n  const bars = ordered.map((b, idx) => {\n    const pieces = [];\n    b.counts.forEach((cnt, i) => {\n      for (let k = 0; k < cnt; k++) pieces.push({ length: ctx.types[i].length, label: labelQueues[i].shift() ?? '' });\n    });\n    const stock = ctx.stocks[b.s];\n    const lay = layoutBar(stock.length, pieces.map((p) => p.length), ctx.kerf, ctx.trim);\n    return { no: idx + 1, stockLength: stock.length, price: stock.price, pieces, ...lay };\n  });\n\n  // 同一パターンをまとめる\n  const patMap = new Map();\n  for (const b of bars) {\n    const key = `${b.stockLength}|${b.pieces.map((p) => `${p.length}:${p.label}`).join(',')}`;\n    if (!patMap.has(key)) {\n      const groups = [];\n      for (const p of b.pieces) {\n        const g = groups.find((x) => x.length === p.length && x.label === p.label);\n        if (g) g.count++;\n        else groups.push({ length: p.length, label: p.label, count: 1 });\n      }\n      patMap.set(key, {\n        stockLength: b.stockLength,\n        price: b.price,\n        pieces: groups,\n        pieceSum: b.pieceSum,\n        pieceCount: b.pieceCount,\n        cutCount: b.cutCount,\n        kerfLoss: b.kerfLoss,\n        trimLoss: b.trimLoss,\n        remnant: b.remnant,\n        repeat: 0,\n        barNos: [],\n      });\n    }\n    const p = patMap.get(key);\n    p.repeat++;\n    p.barNos.push(b.no);\n  }\n  const patterns = [...patMap.values()];\n\n  const byStock = ctx.stocks\n    .map((s) => {\n      const count = bars.filter((b) => b.stockLength === s.length).length;\n      return { length: s.length, price: s.price, count, subtotal: s.price == null ? null : s.price * count };\n    })\n    .filter((x) => x.count > 0);\n  const purchasedLength = sum(bars.map((b) => b.stockLength));\n  const pieceLength = sum(bars.map((b) => b.pieceSum));\n  const kerfLoss = sum(bars.map((b) => b.kerfLoss));\n  const trimLoss = sum(bars.map((b) => b.trimLoss));\n  const remnant = sum(bars.map((b) => b.remnant));\n  const materialCost = byStock.every((x) => x.price != null) ? sum(byStock.map((x) => x.subtotal)) : null;\n\n  return {\n    ok: true,\n    conditions: { kerf: ctx.kerf, trim: ctx.trim, headLoss: headLoss(ctx.kerf, ctx.trim), stocks: ctx.stocks, costBasis: ctx.costBasis },\n    bars,\n    patterns,\n    summary: {\n      barCount: bars.length,\n      byStock,\n      materialCost, // 単価未登録の定尺を使う場合は null（金額を推定しない）\n      purchasedLength,\n      pieceLength,\n      pieceCount: sum(bars.map((b) => b.pieceCount)),\n      cutCount: sum(bars.map((b) => b.cutCount)),\n      kerfLoss,\n      trimLoss,\n      remnant,\n      yieldRate: purchasedLength ? pieceLength / purchasedLength : 0, // 歩留まり\n    },\n    ...meta,\n  };\n}\n\n/**\n * 一次元切断最適化\n * @param {{pieces:{length:number,qty:number,label?:string}[], stocks:{length:number,price?:number|null}[], kerf:number, trim:number}} input\n * @param {Partial<typeof DEFAULT_LIMITS>} [limits]\n */\nfunction optimize1D(input, limits = {}) {\n  const lim = { ...DEFAULT_LIMITS, ...limits };\n  let norm;\n  try {\n    norm = normalizeInput(input);\n  } catch (e) {\n    if (e instanceof InputError) return { ok: false, errors: e.errors };\n    throw e;\n  }\n  const ctx = makeCtx(norm);\n  const t0 = Date.now();\n  const lowerBound = lowerBoundBars(ctx);\n  const heur = solveHeuristic(ctx, lim);\n  const heurScore = scoreBars(ctx, heur);\n\n  // 単一定尺で本数が下限に一致すれば、費用・ロスも一意に決まるため最適\n  if (ctx.stocks.length === 1 && heurScore.bars === lowerBound) {\n    return buildResult(ctx, heur, { optimality: 'proven', method: 'heuristic+bound', lowerBound, elapsedMs: Date.now() - t0 });\n  }\n  const exact = solveExact(ctx, lim);\n  if (exact) {\n    const exScore = scoreBars(ctx, exact.bars);\n    // 理論上 exact は heur 以上に良い。念のため良い方を採用する\n    const useExact = !better(heurScore, exScore);\n    return buildResult(ctx, useExact ? exact.bars : heur, {\n      optimality: 'proven',\n      method: 'exact',\n      lowerBound,\n      states: exact.states,\n      elapsedMs: Date.now() - t0,\n    });\n  }\n  let bars = heur;\n  let barsProven = heurScore.bars === lowerBound;\n  if (!barsProven) {\n    const sb = searchBarCount(ctx, lowerBound, heurScore.bars, lim);\n    barsProven = sb.barsProven;\n    if (sb.bars) bars = downsize(ctx, sb.bars);\n  }\n  const finalBars = scoreBars(ctx, bars).bars;\n  // 単一定尺なら本数が最適＝費用・ロスも最適\n  const optimality = barsProven ? (ctx.stocks.length === 1 ? 'proven' : 'bars-proven') : 'unproven';\n  return buildResult(ctx, bars, {\n    optimality,\n    method: 'heuristic',\n    lowerBound: barsProven ? finalBars : lowerBound,\n    elapsedMs: Date.now() - t0,\n  });\n}\n\nreturn { DEFAULT_LIMITS, InputError, headLoss, layoutBar, normalizeInput, lowerBoundBars, optimize1D };\n})();\n\n// ---- js/core/verify.js\nconst __m1 = (() => {\n// 計算結果の整合性検証（最適化ロジックとは独立に再計算して照合する）\nconst { layoutBar } = __m0;\n/**\n * @param {object} input optimize1D に渡した入力\n * @param {object} result optimize1D の結果\n * @returns {{ok:boolean, errors:string[], checks:number}}\n */\nfunction verify1D(input, result) {\n  const errors = [];\n  let checks = 0;\n  const check = (cond, msg) => {\n    checks++;\n    if (!cond) errors.push(msg);\n  };\n  if (!result || !result.ok) return { ok: false, errors: ['計算結果がありません'], checks };\n\n  const kerf = input.kerf ?? 0;\n  const trim = input.trim ?? 0;\n  const stockSet = new Map((input.stocks ?? []).map((s) => [s.length, s.price ?? null]));\n\n  // 1) 各定尺：収まるか・長さの内訳が定尺と一致するか\n  for (const b of result.bars) {\n    const lens = b.pieces.map((p) => p.length);\n    const lay = layoutBar(b.stockLength, lens, kerf, trim);\n    check(stockSet.has(b.stockLength), `No.${b.no}: 登録されていない定尺 ${b.stockLength}mm が使われています`);\n    check(lay.fits, `No.${b.no}: 部材が定尺 ${b.stockLength}mm に収まりません`);\n    if (!lay.fits) continue;\n    check(\n      lay.pieceSum + lay.kerfLoss + lay.trimLoss + lay.remnant === b.stockLength,\n      `No.${b.no}: 部材＋ロス＋残材 が定尺長さと一致しません`,\n    );\n    check(lay.remnant === b.remnant, `No.${b.no}: 残材長さが再計算値（${lay.remnant}mm）と異なります`);\n    check(lay.kerfLoss === b.kerfLoss, `No.${b.no}: 切断ロスが再計算値（${lay.kerfLoss}mm）と異なります`);\n    check(lay.trimLoss === b.trimLoss, `No.${b.no}: 端部切り落としが再計算値と異なります`);\n    check(lay.pieceSum === b.pieceSum, `No.${b.no}: 部材合計が再計算値と異なります`);\n    check(lens.every((l) => Number.isSafeInteger(l) && l > 0), `No.${b.no}: 部材寸法に整数でない値があります`);\n  }\n\n  // 2) 寸法・符号ごとの本数が過不足なく一致するか\n  const need = new Map();\n  for (const p of input.pieces ?? []) {\n    const k = `${p.length}|${p.label ?? ''}`;\n    need.set(k, (need.get(k) ?? 0) + p.qty);\n  }\n  const got = new Map();\n  for (const b of result.bars) {\n    for (const p of b.pieces) {\n      const k = `${p.length}|${p.label ?? ''}`;\n      got.set(k, (got.get(k) ?? 0) + 1);\n    }\n  }\n  for (const [k, n] of need) {\n    const [len, label] = k.split('|');\n    const g = got.get(k) ?? 0;\n    const name = label ? `「${label}」` : '';\n    check(g === n, `部材${name} ${len}mm：必要 ${n}本 に対し 切出し ${g}本（${g > n ? '過剰' : '不足'}）`);\n  }\n  for (const [k, g] of got) {\n    if (!need.has(k)) {\n      const [len] = k.split('|');\n      check(false, `入力にない部材 ${len}mm が ${g}本 含まれています`);\n    }\n  }\n\n  // 3) 集計値の一致\n  const s = result.summary;\n  const add = (f) => result.bars.reduce((a, b) => a + f(b), 0);\n  check(s.barCount === result.bars.length, '定尺本数の集計が一致しません');\n  check(s.purchasedLength === add((b) => b.stockLength), '購入長さの集計が一致しません');\n  check(s.pieceLength === add((b) => b.pieceSum), '部材長さの集計が一致しません');\n  check(s.kerfLoss === add((b) => b.kerfLoss), '切断ロスの集計が一致しません');\n  check(s.trimLoss === add((b) => b.trimLoss), '端部切り落としの集計が一致しません');\n  check(s.remnant === add((b) => b.remnant), '残材の集計が一致しません');\n  check(\n    s.pieceLength + s.kerfLoss + s.trimLoss + s.remnant === s.purchasedLength,\n    '部材＋切断ロス＋端部切り落とし＋残材 が購入長さと一致しません',\n  );\n  const byStockCount = s.byStock.reduce((a, x) => a + x.count, 0);\n  check(byStockCount === s.barCount, '定尺別本数の合計が一致しません');\n  const patCount = result.patterns.reduce((a, p) => a + p.repeat, 0);\n  check(patCount === s.barCount, '切断パターンの本数合計が一致しません');\n\n  // 4) 単価未登録なのに金額が出ていないか\n  const anyUnpriced = s.byStock.some((x) => stockSet.get(x.length) == null);\n  if (anyUnpriced) check(s.materialCost == null, '単価未登録の定尺があるのに材料費が表示されています');\n\n  return { ok: errors.length === 0, errors, checks };\n}\n\nreturn { verify1D };\n})();\n\n// ---- js/workers/optimize-worker.js\nconst __m2 = (() => {\n// 切断最適化を画面の操作を止めずに実行する Web Worker\nconst { optimize1D } = __m0;\nconst { verify1D } = __m1;\nself.onmessage = (ev) => {\n  const { id, input } = ev.data;\n  try {\n    const result = optimize1D(input);\n    const verification = result.ok ? verify1D(input, result) : null;\n    self.postMessage({ id, result, verification });\n  } catch (e) {\n    self.postMessage({ id, error: String(e?.message ?? e) });\n  }\n};\n\nreturn {  };\n})();";</script>
+<script type="module">
+// ---- js/core/cutting1d.js
+const __m0 = (() => {
+// 一次元切断最適化（角パイプ・丸パイプ・アングル・チャンネル・フラットバー・丸棒）
+// DOM非依存。ブラウザ・Web Worker・Node.js のいずれからも import できる。
+//
+// ■ 切断モデル（すべて整数mm）
+//   定尺 L から部材 l1..ln を切り出すとき、
+//   ・端部切り落とし trim > 0 の場合：先端で trim を落とし、その切断で切断幅 kerf を1回消費
+//   ・部材と部材の間：切断幅 kerf を1回ずつ消費（n-1回）
+//   ・最後の部材のあと残り rest が
+//       rest = 0        … 切断不要（ちょうど使い切り）
+//       0 < rest ≦ kerf … その全量を切断ロスとする（残材なし）
+//       rest > kerf     … 1回切断して kerf を消費、残り rest-kerf を残材とする
+//   収まる条件：(trim>0 ? trim+kerf : 0) + Σl + (n-1)·kerf ≦ L
+//   検算式：Σl + 切断幅ロス + 端部切り落とし + 残材 = L
+//
+// ■ 最適化の評価順（辞書式）
+//   ① 定尺本数　② 購入費用（全定尺に単価がある場合）／購入長さ（単価未登録がある場合）
+//   ③ 端材＋切断ロスの合計（= 購入長さ − 部材合計）
+
+const DEFAULT_LIMITS = Object.freeze({
+  maxStates: 250_000, // 厳密探索で記憶する状態数の上限
+  maxNodes: 6_000_000, // 切断パターン列挙の上限
+  timeLimitMs: 4000, // 厳密探索の時間上限
+  restarts: 80, // ヒューリスティックの乱択試行回数
+});
+
+class InputError extends Error {
+  constructor(errors) {
+    super(errors.join('\n'));
+    this.errors = errors;
+  }
+}
+
+const sum = (a) => a.reduce((s, v) => s + v, 0);
+
+/** 先端の切り落としで失う長さ（切断幅込み） */
+function headLoss(kerf, trim) {
+  return trim > 0 ? trim + kerf : 0;
+}
+
+/**
+ * 1本の定尺から部材を切り出したときの内訳を計算する。
+ * @param {number} stockLength 定尺長さ
+ * @param {number[]} pieceLengths 部材長さ
+ */
+function layoutBar(stockLength, pieceLengths, kerf, trim) {
+  const n = pieceLengths.length;
+  const pieceSum = sum(pieceLengths);
+  const head = headLoss(kerf, trim);
+  const used = head + pieceSum + (n > 0 ? (n - 1) * kerf : 0);
+  const rest = stockLength - used;
+  if (rest < 0) return { fits: false, stockLength, pieceSum, pieceCount: n, overBy: -rest };
+  let tailCut = 0;
+  let sliver = 0;
+  let remnant = 0;
+  if (rest > kerf) {
+    tailCut = kerf;
+    remnant = rest - kerf;
+  } else if (rest > 0) {
+    sliver = rest;
+  }
+  const cutCount = (trim > 0 ? 1 : 0) + Math.max(0, n - 1) + (rest > 0 ? 1 : 0);
+  const kerfLoss = (trim > 0 ? kerf : 0) + Math.max(0, n - 1) * kerf + tailCut + sliver;
+  const trimLoss = trim > 0 ? trim : 0;
+  return {
+    fits: true,
+    stockLength,
+    pieceSum,
+    pieceCount: n,
+    cutCount,
+    kerfLoss, // 切断幅による損失（切断幅以下で残った切れ端を含む）
+    trimLoss, // 端部切り落とし
+    remnant, // 計算上の残材長さ
+  };
+}
+
+/** 入力を検証し、内部表現に変換する */
+function normalizeInput(input) {
+  const errors = [];
+  const isInt = (v) => Number.isSafeInteger(v);
+  const kerf = input.kerf ?? 0;
+  const trim = input.trim ?? 0;
+  if (!isInt(kerf) || kerf < 0) errors.push('切断幅は0以上の整数mmで指定してください');
+  if (!isInt(trim) || trim < 0) errors.push('端部切り落とし寸法は0以上の整数mmで指定してください');
+
+  const stocksIn = input.stocks ?? [];
+  if (stocksIn.length === 0) errors.push('定尺が登録されていません');
+  const seen = new Set();
+  const stocks = [];
+  for (const s of stocksIn) {
+    if (!isInt(s.length) || s.length <= 0) {
+      errors.push(`定尺長さ「${s.length}」が不正です（正の整数mm）`);
+      continue;
+    }
+    if (seen.has(s.length)) {
+      errors.push(`定尺 ${s.length}mm が重複しています`);
+      continue;
+    }
+    if (s.price != null && (!isInt(s.price) || s.price < 0)) {
+      errors.push(`定尺 ${s.length}mm の単価が不正です`);
+      continue;
+    }
+    seen.add(s.length);
+    stocks.push({ length: s.length, price: s.price ?? null });
+  }
+
+  const byLen = new Map();
+  for (const p of input.pieces ?? []) {
+    const name = p.label ? `「${p.label}」` : '';
+    if (!isInt(p.length) || p.length <= 0) {
+      errors.push(`部材${name}の寸法「${p.length}」が不正です（正の整数mm）`);
+      continue;
+    }
+    if (!isInt(p.qty) || p.qty <= 0) {
+      errors.push(`部材${name} ${p.length}mm の本数「${p.qty}」が不正です（1以上の整数）`);
+      continue;
+    }
+    if (!byLen.has(p.length)) byLen.set(p.length, []);
+    byLen.get(p.length).push({ label: p.label ?? '', qty: p.qty });
+  }
+  if (byLen.size === 0 && errors.length === 0) errors.push('部材が入力されていません');
+
+  if (errors.length === 0) {
+    const head = headLoss(kerf, trim);
+    const maxStock = Math.max(...stocks.map((s) => s.length));
+    for (const len of byLen.keys()) {
+      if (head + len > maxStock) {
+        const usable = maxStock - head;
+        errors.push(
+          `部材 ${len}mm は最長の定尺 ${maxStock}mm から切り出せません（端部処理後の有効長さ ${usable}mm）`,
+        );
+      }
+    }
+  }
+  if (errors.length) throw new InputError(errors);
+
+  // 長い順に並べた部材種類
+  const lengths = [...byLen.keys()].sort((a, b) => b - a);
+  const types = lengths.map((len) => ({
+    length: len,
+    demand: sum(byLen.get(len).map((x) => x.qty)),
+    labels: byLen.get(len),
+  }));
+  stocks.sort((a, b) => b.length - a.length);
+  const costBasis = stocks.every((s) => s.price != null) ? 'price' : 'length';
+  return { kerf, trim, stocks, types, costBasis };
+}
+
+// ---------------------------------------------------------------------------
+// 評価値（辞書式）
+// ---------------------------------------------------------------------------
+function better(a, b) {
+  if (!b) return true;
+  if (a.bars !== b.bars) return a.bars < b.bars;
+  if (a.cost !== b.cost) return a.cost < b.cost;
+  return a.waste < b.waste;
+}
+
+function makeCtx(norm) {
+  const { kerf, trim, stocks, types, costBasis } = norm;
+  const w = types.map((t) => t.length + kerf); // 部材1本が消費する長さ（切断幅込み）
+  const cap = stocks.map((s) => s.length - headLoss(kerf, trim) + kerf); // 定尺の容量
+  const stockCost = stocks.map((s) => (costBasis === 'price' ? s.price : s.length));
+  return { ...norm, w, cap, stockCost };
+}
+
+/** 本数の下限（Martello–Toth L2 を最長定尺の容量で適用） */
+function lowerBoundBars(ctx) {
+  const C = Math.max(...ctx.cap);
+  const items = [];
+  ctx.types.forEach((t, i) => {
+    for (let k = 0; k < t.demand; k++) items.push(ctx.w[i]);
+  });
+  const total = sum(items);
+  let best = Math.ceil(total / C);
+  const ks = [...new Set(items.filter((x) => x <= C / 2))];
+  ks.push(0);
+  for (const k of ks) {
+    let n1 = 0;
+    let n2 = 0;
+    let s2 = 0;
+    let s3 = 0;
+    for (const x of items) {
+      if (x > C - k) n1++;
+      else if (x > C / 2) {
+        n2++;
+        s2 += x;
+      } else if (x >= k) s3 += x;
+    }
+    const lb = n1 + n2 + Math.max(0, Math.ceil((s3 - (n2 * C - s2)) / C));
+    if (lb > best) best = lb;
+  }
+  return best;
+}
+
+// ---------------------------------------------------------------------------
+// 厳密解：残り需要ベクトルを状態とする記憶化探索
+//   ・各定尺は「残っている最長の部材を必ず含む」
+//   ・その定尺に対して極大（残りのどの部材ももう入らない）なパターンのみ列挙
+//   この2つの制約の下でも最適解が必ず存在する（部材の入れ替え・後ろの定尺からの移動で示せる）。
+// ---------------------------------------------------------------------------
+const ABORT = Symbol('abort');
+
+function solveExact(ctx, limits) {
+  const T = ctx.types.length;
+  const S = ctx.stocks.length;
+  const memo = new Map();
+  const deadline = Date.now() + limits.timeLimitMs;
+  let nodes = 0;
+  const ZERO = { bars: 0, cost: 0, waste: 0 };
+
+  function patterns(state, f, s) {
+    const out = [];
+    const x = new Array(T).fill(0);
+    const C = ctx.cap[s];
+    function dfs(i, rem) {
+      if (++nodes > limits.maxNodes) throw ABORT;
+      if ((nodes & 0x3fff) === 0 && Date.now() > deadline) throw ABORT;
+      if (i === T) {
+        // 極大性：残りの部材でまだ入るものがあれば不採用
+        for (let j = T - 1; j >= f; j--) {
+          if (state[j] - x[j] > 0) {
+            if (ctx.w[j] <= rem) return;
+            break; // w は降順なので最小のものだけ見ればよい
+          }
+        }
+        out.push(x.slice());
+        return;
+      }
+      if (i < f) return dfs(f, rem);
+      const maxK = Math.min(state[i], Math.floor(rem / ctx.w[i]));
+      const minK = i === f ? 1 : 0;
+      for (let k = maxK; k >= minK; k--) {
+        x[i] = k;
+        dfs(i + 1, rem - k * ctx.w[i]);
+      }
+      x[i] = 0;
+    }
+    if (ctx.w[f] <= C) dfs(f, C);
+    return out;
+  }
+
+  function rec(state) {
+    let f = -1;
+    for (let i = 0; i < T; i++) {
+      if (state[i] > 0) {
+        f = i;
+        break;
+      }
+    }
+    if (f < 0) return ZERO;
+    const key = state.join(',');
+    const hit = memo.get(key);
+    if (hit) return hit;
+    if (memo.size >= limits.maxStates) throw ABORT;
+    let best = null;
+    for (let s = 0; s < S; s++) {
+      for (const x of patterns(state, f, s)) {
+        const child = state.map((v, i) => v - x[i]);
+        const r = rec(child);
+        let pieceSum = 0;
+        for (let i = 0; i < T; i++) pieceSum += x[i] * ctx.types[i].length;
+        const cand = {
+          bars: r.bars + 1,
+          cost: r.cost + ctx.stockCost[s],
+          waste: r.waste + ctx.stocks[s].length - pieceSum,
+          s,
+          x,
+          child,
+        };
+        if (better(cand, best)) best = cand;
+      }
+    }
+    memo.set(key, best);
+    return best;
+  }
+
+  try {
+    let state = ctx.types.map((t) => t.demand);
+    const root = rec(state);
+    const bars = [];
+    let node = root;
+    while (node && node.x) {
+      bars.push({ s: node.s, counts: node.x });
+      state = node.child;
+      node = rec(state);
+    }
+    return { bars, states: memo.size, nodes };
+  } catch (e) {
+    if (e === ABORT) return null;
+    throw e;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ヒューリスティック（大規模入力用・初期解）
+// ---------------------------------------------------------------------------
+
+/** 有界ナップサック：容量 C に詰める部材本数ベクトル（消費長さ最大） */
+function bestFill(ctx, remaining, C) {
+  const items = []; // {type, k, weight}
+  ctx.types.forEach((t, i) => {
+    let left = Math.min(remaining[i], Math.floor(C / ctx.w[i]));
+    let k = 1;
+    while (left > 0) {
+      const take = Math.min(k, left);
+      items.push({ type: i, k: take, weight: take * ctx.w[i] });
+      left -= take;
+      k *= 2;
+    }
+  });
+  const from = new Int32Array(C + 1).fill(-1); // その容量に初めて到達した品目
+  const reach = new Uint8Array(C + 1);
+  reach[0] = 1;
+  for (let it = 0; it < items.length; it++) {
+    const wt = items[it].weight;
+    for (let c = C; c >= wt; c--) {
+      if (!reach[c] && reach[c - wt]) {
+        reach[c] = 1;
+        from[c] = it;
+      }
+    }
+  }
+  let c = C;
+  while (c > 0 && !reach[c]) c--;
+  const x = new Array(ctx.types.length).fill(0);
+  while (c > 0) {
+    const it = items[from[c]];
+    x[it.type] += it.k;
+    c -= it.weight;
+  }
+  return x;
+}
+
+function pieceSumOf(ctx, counts) {
+  let s = 0;
+  for (let i = 0; i < counts.length; i++) s += counts[i] * ctx.types[i].length;
+  return s;
+}
+function usedOf(ctx, counts) {
+  let s = 0;
+  for (let i = 0; i < counts.length; i++) s += counts[i] * ctx.w[i];
+  return s;
+}
+
+/** 各定尺の内容を収められる最も安い（同額なら短い）定尺に置き換える */
+function downsize(ctx, bars) {
+  return bars.map((b) => {
+    const used = usedOf(ctx, b.counts);
+    let bestS = b.s;
+    for (let s = 0; s < ctx.stocks.length; s++) {
+      if (ctx.cap[s] < used) continue;
+      const cs = ctx.stockCost[s];
+      const cb = ctx.stockCost[bestS];
+      if (ctx.cap[bestS] < used || cs < cb || (cs === cb && ctx.stocks[s].length < ctx.stocks[bestS].length)) bestS = s;
+    }
+    return { s: bestS, counts: b.counts };
+  });
+}
+
+function scoreBars(ctx, bars) {
+  let cost = 0;
+  let waste = 0;
+  for (const b of bars) {
+    cost += ctx.stockCost[b.s];
+    waste += ctx.stocks[b.s].length - pieceSumOf(ctx, b.counts);
+  }
+  return { bars: bars.length, cost, waste };
+}
+
+function sequentialKnapsack(ctx, stockChooser) {
+  const remaining = ctx.types.map((t) => t.demand);
+  const bars = [];
+  while (remaining.some((v) => v > 0)) {
+    let pick = null;
+    for (const s of stockChooser) {
+      const x = bestFill(ctx, remaining, ctx.cap[s]);
+      if (x.every((v) => v === 0)) continue;
+      const ps = pieceSumOf(ctx, x);
+      const ratio = ps / ctx.stocks[s].length;
+      if (!pick || ratio > pick.ratio) pick = { s, x, ratio };
+    }
+    if (!pick) throw new Error('internal: no pattern fits');
+    bars.push({ s: pick.s, counts: pick.x });
+    pick.x.forEach((v, i) => (remaining[i] -= v));
+  }
+  return bars;
+}
+
+/** 並び順を与えた First/Best Fit Decreasing（最長定尺を使用） */
+function fitDecreasing(ctx, order, best) {
+  const C = Math.max(...ctx.cap);
+  const sMax = ctx.cap.indexOf(C);
+  const bins = []; // {free, counts}
+  for (const i of order) {
+    const wi = ctx.w[i];
+    let target = null;
+    for (const b of bins) {
+      if (b.free >= wi && (!target || (best ? b.free < target.free : false))) {
+        target = b;
+        if (!best) break;
+      }
+    }
+    if (!target) {
+      target = { free: C, counts: new Array(ctx.types.length).fill(0) };
+      bins.push(target);
+    }
+    target.free -= wi;
+    target.counts[i]++;
+  }
+  return bins.map((b) => ({ s: sMax, counts: b.counts }));
+}
+
+/** 最も詰まりの悪い定尺を他の定尺の空きへ分配して1本減らせないか試す */
+function tryEliminate(ctx, bars) {
+  const C = Math.max(...ctx.cap);
+  const sMax = ctx.cap.indexOf(C);
+  let cur = bars.map((b) => ({ s: sMax, counts: b.counts.slice() }));
+  let improved = true;
+  while (improved && cur.length > 1) {
+    improved = false;
+    const order = cur.map((b, i) => [usedOf(ctx, b.counts), i]).sort((a, b) => a[0] - b[0]);
+    for (const [, vi] of order) {
+      const victim = cur[vi];
+      const others = cur.filter((_, i) => i !== vi).map((b) => ({ s: b.s, counts: b.counts.slice(), free: C - usedOf(ctx, b.counts) }));
+      let ok = true;
+      for (let t = 0; t < victim.counts.length && ok; t++) {
+        for (let k = 0; k < victim.counts[t]; k++) {
+          let tgt = null;
+          for (const o of others) if (o.free >= ctx.w[t] && (!tgt || o.free < tgt.free)) tgt = o;
+          if (!tgt) {
+            ok = false;
+            break;
+          }
+          tgt.free -= ctx.w[t];
+          tgt.counts[t]++;
+        }
+      }
+      if (ok) {
+        cur = others.map((o) => ({ s: o.s, counts: o.counts }));
+        improved = true;
+        break;
+      }
+    }
+  }
+  return cur;
+}
+
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function solveHeuristic(ctx, limits) {
+  const candidates = [];
+  const allS = ctx.stocks.map((_, s) => s);
+  const longest = [ctx.cap.indexOf(Math.max(...ctx.cap))];
+  candidates.push(sequentialKnapsack(ctx, longest));
+  candidates.push(sequentialKnapsack(ctx, allS));
+  const base = [];
+  ctx.types.forEach((t, i) => {
+    for (let k = 0; k < t.demand; k++) base.push(i);
+  });
+  candidates.push(fitDecreasing(ctx, base, false));
+  candidates.push(fitDecreasing(ctx, base, true));
+  const rnd = mulberry32(12345);
+  for (let r = 0; r < limits.restarts; r++) {
+    const order = base.slice();
+    // 降順を保ちつつ近傍をランダムに入れ替える
+    for (let i = 0; i < order.length - 1; i++) {
+      if (rnd() < 0.3) {
+        const j = Math.min(order.length - 1, i + 1 + Math.floor(rnd() * 3));
+        [order[i], order[j]] = [order[j], order[i]];
+      }
+    }
+    candidates.push(fitDecreasing(ctx, order, rnd() < 0.5));
+  }
+  let best = null;
+  let bestScore = null;
+  for (const c of candidates) {
+    for (const variant of [c, tryEliminate(ctx, c)]) {
+      const d = downsize(ctx, variant);
+      const sc = scoreBars(ctx, d);
+      if (better(sc, bestScore)) {
+        best = d;
+        bestScore = sc;
+      }
+    }
+  }
+  return best;
+}
+
+// ---------------------------------------------------------------------------
+// 本数のみの厳密探索（厳密解が上限に達した大規模入力用）
+//   「B本で切り出せるか」を、面積下限による枝刈りと失敗状態の記憶で判定する。
+// ---------------------------------------------------------------------------
+function searchBarCount(ctx, lowerBound, upperBound, limits) {
+  const T = ctx.types.length;
+  const C = Math.max(...ctx.cap);
+  const sMax = ctx.cap.indexOf(C);
+  const deadline = Date.now() + limits.timeLimitMs;
+  const failed = new Map(); // state -> この本数以下では不可能と判明した最大本数
+  let nodes = 0;
+
+  function feasible(state, remW, k, out) {
+    if (remW === 0) return true;
+    if (k === 0 || Math.ceil(remW / C) > k) return false;
+    if (++nodes > limits.maxNodes || ((nodes & 0x3ff) === 0 && Date.now() > deadline)) throw ABORT;
+    const key = state.join(',');
+    if ((failed.get(key) ?? -1) >= k) return false;
+    let f = 0;
+    while (state[f] === 0) f++;
+    // 極大パターンを詰まりの良い順に列挙
+    const pats = [];
+    const x = new Array(T).fill(0);
+    (function dfs(i, rem) {
+      if (i === T) {
+        for (let j = T - 1; j >= f; j--) {
+          if (state[j] - x[j] > 0) {
+            if (ctx.w[j] <= rem) return;
+            break;
+          }
+        }
+        pats.push({ x: x.slice(), used: C - rem });
+        return;
+      }
+      const maxK = Math.min(state[i], Math.floor(rem / ctx.w[i]));
+      for (let c = maxK; c >= (i === f ? 1 : 0); c--) {
+        x[i] = c;
+        dfs(i + 1, rem - c * ctx.w[i]);
+      }
+      x[i] = 0;
+    })(f, C);
+    pats.sort((a, b) => b.used - a.used);
+    for (const p of pats) {
+      const child = state.map((v, i) => v - p.x[i]);
+      out.push(p.x);
+      if (feasible(child, remW - p.used, k - 1, out)) return true;
+      out.pop();
+    }
+    failed.set(key, Math.max(failed.get(key) ?? -1, k));
+    return false;
+  }
+
+  const state = ctx.types.map((t) => t.demand);
+  const remW = state.reduce((a, v, i) => a + v * ctx.w[i], 0);
+  try {
+    for (let B = lowerBound; B < upperBound; B++) {
+      const out = [];
+      if (feasible(state, remW, B, out)) return { bars: out.map((x) => ({ s: sMax, counts: x })), barsProven: true };
+    }
+    return { bars: null, barsProven: true }; // 上界（ヒューリスティック解）が最小本数
+  } catch (e) {
+    if (e === ABORT) return { bars: null, barsProven: false };
+    throw e;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 結果の組み立て
+// ---------------------------------------------------------------------------
+function buildResult(ctx, rawBars, meta) {
+  // 同一寸法の部材に符号（ラベル）を順番に割り当てる
+  const labelQueues = ctx.types.map((t) => {
+    const q = [];
+    for (const l of t.labels) for (let k = 0; k < l.qty; k++) q.push(l.label);
+    return q;
+  });
+  const ordered = rawBars
+    .map((b) => ({ ...b, used: usedOf(ctx, b.counts) }))
+    .sort((a, b) => {
+      const d = ctx.stocks[b.s].length - ctx.stocks[a.s].length || b.used - a.used;
+      if (d) return d;
+      const ka = a.counts.join(',');
+      const kb = b.counts.join(',');
+      return ka < kb ? 1 : ka > kb ? -1 : 0;
+    });
+
+  const bars = ordered.map((b, idx) => {
+    const pieces = [];
+    b.counts.forEach((cnt, i) => {
+      for (let k = 0; k < cnt; k++) pieces.push({ length: ctx.types[i].length, label: labelQueues[i].shift() ?? '' });
+    });
+    const stock = ctx.stocks[b.s];
+    const lay = layoutBar(stock.length, pieces.map((p) => p.length), ctx.kerf, ctx.trim);
+    return { no: idx + 1, stockLength: stock.length, price: stock.price, pieces, ...lay };
+  });
+
+  // 同一パターンをまとめる
+  const patMap = new Map();
+  for (const b of bars) {
+    const key = `${b.stockLength}|${b.pieces.map((p) => `${p.length}:${p.label}`).join(',')}`;
+    if (!patMap.has(key)) {
+      const groups = [];
+      for (const p of b.pieces) {
+        const g = groups.find((x) => x.length === p.length && x.label === p.label);
+        if (g) g.count++;
+        else groups.push({ length: p.length, label: p.label, count: 1 });
+      }
+      patMap.set(key, {
+        stockLength: b.stockLength,
+        price: b.price,
+        pieces: groups,
+        pieceSum: b.pieceSum,
+        pieceCount: b.pieceCount,
+        cutCount: b.cutCount,
+        kerfLoss: b.kerfLoss,
+        trimLoss: b.trimLoss,
+        remnant: b.remnant,
+        repeat: 0,
+        barNos: [],
+      });
+    }
+    const p = patMap.get(key);
+    p.repeat++;
+    p.barNos.push(b.no);
+  }
+  const patterns = [...patMap.values()];
+
+  const byStock = ctx.stocks
+    .map((s) => {
+      const count = bars.filter((b) => b.stockLength === s.length).length;
+      return { length: s.length, price: s.price, count, subtotal: s.price == null ? null : s.price * count };
+    })
+    .filter((x) => x.count > 0);
+  const purchasedLength = sum(bars.map((b) => b.stockLength));
+  const pieceLength = sum(bars.map((b) => b.pieceSum));
+  const kerfLoss = sum(bars.map((b) => b.kerfLoss));
+  const trimLoss = sum(bars.map((b) => b.trimLoss));
+  const remnant = sum(bars.map((b) => b.remnant));
+  const materialCost = byStock.every((x) => x.price != null) ? sum(byStock.map((x) => x.subtotal)) : null;
+
+  return {
+    ok: true,
+    conditions: { kerf: ctx.kerf, trim: ctx.trim, headLoss: headLoss(ctx.kerf, ctx.trim), stocks: ctx.stocks, costBasis: ctx.costBasis },
+    bars,
+    patterns,
+    summary: {
+      barCount: bars.length,
+      byStock,
+      materialCost, // 単価未登録の定尺を使う場合は null（金額を推定しない）
+      purchasedLength,
+      pieceLength,
+      pieceCount: sum(bars.map((b) => b.pieceCount)),
+      cutCount: sum(bars.map((b) => b.cutCount)),
+      kerfLoss,
+      trimLoss,
+      remnant,
+      yieldRate: purchasedLength ? pieceLength / purchasedLength : 0, // 歩留まり
+    },
+    ...meta,
+  };
+}
+
+/**
+ * 一次元切断最適化
+ * @param {{pieces:{length:number,qty:number,label?:string}[], stocks:{length:number,price?:number|null}[], kerf:number, trim:number}} input
+ * @param {Partial<typeof DEFAULT_LIMITS>} [limits]
+ */
+function optimize1D(input, limits = {}) {
+  const lim = { ...DEFAULT_LIMITS, ...limits };
+  let norm;
+  try {
+    norm = normalizeInput(input);
+  } catch (e) {
+    if (e instanceof InputError) return { ok: false, errors: e.errors };
+    throw e;
+  }
+  const ctx = makeCtx(norm);
+  const t0 = Date.now();
+  const lowerBound = lowerBoundBars(ctx);
+  const heur = solveHeuristic(ctx, lim);
+  const heurScore = scoreBars(ctx, heur);
+
+  // 単一定尺で本数が下限に一致すれば、費用・ロスも一意に決まるため最適
+  if (ctx.stocks.length === 1 && heurScore.bars === lowerBound) {
+    return buildResult(ctx, heur, { optimality: 'proven', method: 'heuristic+bound', lowerBound, elapsedMs: Date.now() - t0 });
+  }
+  const exact = solveExact(ctx, lim);
+  if (exact) {
+    const exScore = scoreBars(ctx, exact.bars);
+    // 理論上 exact は heur 以上に良い。念のため良い方を採用する
+    const useExact = !better(heurScore, exScore);
+    return buildResult(ctx, useExact ? exact.bars : heur, {
+      optimality: 'proven',
+      method: 'exact',
+      lowerBound,
+      states: exact.states,
+      elapsedMs: Date.now() - t0,
+    });
+  }
+  let bars = heur;
+  let barsProven = heurScore.bars === lowerBound;
+  if (!barsProven) {
+    const sb = searchBarCount(ctx, lowerBound, heurScore.bars, lim);
+    barsProven = sb.barsProven;
+    if (sb.bars) bars = downsize(ctx, sb.bars);
+  }
+  const finalBars = scoreBars(ctx, bars).bars;
+  // 単一定尺なら本数が最適＝費用・ロスも最適
+  const optimality = barsProven ? (ctx.stocks.length === 1 ? 'proven' : 'bars-proven') : 'unproven';
+  return buildResult(ctx, bars, {
+    optimality,
+    method: 'heuristic',
+    lowerBound: barsProven ? finalBars : lowerBound,
+    elapsedMs: Date.now() - t0,
+  });
+}
+
+return { DEFAULT_LIMITS, InputError, headLoss, layoutBar, normalizeInput, lowerBoundBars, optimize1D };
+})();
+
+// ---- js/core/verify.js
+const __m1 = (() => {
+// 計算結果の整合性検証（最適化ロジックとは独立に再計算して照合する）
+const { layoutBar } = __m0;
+/**
+ * @param {object} input optimize1D に渡した入力
+ * @param {object} result optimize1D の結果
+ * @returns {{ok:boolean, errors:string[], checks:number}}
+ */
+function verify1D(input, result) {
+  const errors = [];
+  let checks = 0;
+  const check = (cond, msg) => {
+    checks++;
+    if (!cond) errors.push(msg);
+  };
+  if (!result || !result.ok) return { ok: false, errors: ['計算結果がありません'], checks };
+
+  const kerf = input.kerf ?? 0;
+  const trim = input.trim ?? 0;
+  const stockSet = new Map((input.stocks ?? []).map((s) => [s.length, s.price ?? null]));
+
+  // 1) 各定尺：収まるか・長さの内訳が定尺と一致するか
+  for (const b of result.bars) {
+    const lens = b.pieces.map((p) => p.length);
+    const lay = layoutBar(b.stockLength, lens, kerf, trim);
+    check(stockSet.has(b.stockLength), `No.${b.no}: 登録されていない定尺 ${b.stockLength}mm が使われています`);
+    check(lay.fits, `No.${b.no}: 部材が定尺 ${b.stockLength}mm に収まりません`);
+    if (!lay.fits) continue;
+    check(
+      lay.pieceSum + lay.kerfLoss + lay.trimLoss + lay.remnant === b.stockLength,
+      `No.${b.no}: 部材＋ロス＋残材 が定尺長さと一致しません`,
+    );
+    check(lay.remnant === b.remnant, `No.${b.no}: 残材長さが再計算値（${lay.remnant}mm）と異なります`);
+    check(lay.kerfLoss === b.kerfLoss, `No.${b.no}: 切断ロスが再計算値（${lay.kerfLoss}mm）と異なります`);
+    check(lay.trimLoss === b.trimLoss, `No.${b.no}: 端部切り落としが再計算値と異なります`);
+    check(lay.pieceSum === b.pieceSum, `No.${b.no}: 部材合計が再計算値と異なります`);
+    check(lens.every((l) => Number.isSafeInteger(l) && l > 0), `No.${b.no}: 部材寸法に整数でない値があります`);
+  }
+
+  // 2) 寸法・符号ごとの本数が過不足なく一致するか
+  const need = new Map();
+  for (const p of input.pieces ?? []) {
+    const k = `${p.length}|${p.label ?? ''}`;
+    need.set(k, (need.get(k) ?? 0) + p.qty);
+  }
+  const got = new Map();
+  for (const b of result.bars) {
+    for (const p of b.pieces) {
+      const k = `${p.length}|${p.label ?? ''}`;
+      got.set(k, (got.get(k) ?? 0) + 1);
+    }
+  }
+  for (const [k, n] of need) {
+    const [len, label] = k.split('|');
+    const g = got.get(k) ?? 0;
+    const name = label ? `「${label}」` : '';
+    check(g === n, `部材${name} ${len}mm：必要 ${n}本 に対し 切出し ${g}本（${g > n ? '過剰' : '不足'}）`);
+  }
+  for (const [k, g] of got) {
+    if (!need.has(k)) {
+      const [len] = k.split('|');
+      check(false, `入力にない部材 ${len}mm が ${g}本 含まれています`);
+    }
+  }
+
+  // 3) 集計値の一致
+  const s = result.summary;
+  const add = (f) => result.bars.reduce((a, b) => a + f(b), 0);
+  check(s.barCount === result.bars.length, '定尺本数の集計が一致しません');
+  check(s.purchasedLength === add((b) => b.stockLength), '購入長さの集計が一致しません');
+  check(s.pieceLength === add((b) => b.pieceSum), '部材長さの集計が一致しません');
+  check(s.kerfLoss === add((b) => b.kerfLoss), '切断ロスの集計が一致しません');
+  check(s.trimLoss === add((b) => b.trimLoss), '端部切り落としの集計が一致しません');
+  check(s.remnant === add((b) => b.remnant), '残材の集計が一致しません');
+  check(
+    s.pieceLength + s.kerfLoss + s.trimLoss + s.remnant === s.purchasedLength,
+    '部材＋切断ロス＋端部切り落とし＋残材 が購入長さと一致しません',
+  );
+  const byStockCount = s.byStock.reduce((a, x) => a + x.count, 0);
+  check(byStockCount === s.barCount, '定尺別本数の合計が一致しません');
+  const patCount = result.patterns.reduce((a, p) => a + p.repeat, 0);
+  check(patCount === s.barCount, '切断パターンの本数合計が一致しません');
+
+  // 4) 単価未登録なのに金額が出ていないか
+  const anyUnpriced = s.byStock.some((x) => stockSet.get(x.length) == null);
+  if (anyUnpriced) check(s.materialCost == null, '単価未登録の定尺があるのに材料費が表示されています');
+
+  return { ok: errors.length === 0, errors, checks };
+}
+
+return { verify1D };
+})();
+globalThis.__STEELCUT_CORE__ = { ...__m0, ...__m1 };
+</script>
+<script type="module">
+// ---- js/core/materials.js
+const __m0 = (() => {
+// 材料種別の定義・規格表記・初期マスター（DOM非依存）
+
+/** 寸法欄の定義：key, ラベル */
+const MATERIAL_TYPES = [
+  {
+    id: 'square_pipe',
+    name: '角パイプ',
+    kind: '1d',
+    dims: [['H', '高さH'], ['B', '幅B'], ['t', '板厚t']],
+    spec: (d) => `□-${d.H}×${d.B}×${d.t}`,
+  },
+  {
+    id: 'round_pipe',
+    name: '丸パイプ',
+    kind: '1d',
+    dims: [['D', '外径D'], ['t', '板厚t']],
+    spec: (d) => `φ${d.D}×${d.t}`,
+  },
+  {
+    id: 'angle',
+    name: 'アングル',
+    kind: '1d',
+    dims: [['A', '辺A'], ['B', '辺B'], ['t', '板厚t']],
+    spec: (d) => `L-${d.A}×${d.B}×${d.t}`,
+  },
+  {
+    id: 'channel',
+    name: 'チャンネル',
+    kind: '1d',
+    dims: [['H', '高さH'], ['B', '幅B'], ['t1', 'ウェブt1'], ['t2', 'フランジt2']],
+    spec: (d) => `[-${d.H}×${d.B}×${d.t1}×${d.t2}`,
+  },
+  {
+    id: 'flat_bar',
+    name: 'フラットバー',
+    kind: '1d',
+    dims: [['t', '板厚t'], ['W', '幅W']],
+    spec: (d) => `FB-${d.t}×${d.W}`,
+  },
+  {
+    id: 'round_bar',
+    name: '丸棒',
+    kind: '1d',
+    dims: [['D', '径D']],
+    spec: (d) => `φ${d.D}`,
+  },
+  {
+    id: 'plate',
+    name: '鋼板・縞板',
+    kind: '2d',
+    dims: [['t', '板厚t']],
+    spec: (d, m) => `${m?.checkered ? '縞板' : 'PL'}-${d.t}`,
+  },
+];
+
+const TYPE_BY_ID = Object.fromEntries(MATERIAL_TYPES.map((t) => [t.id, t]));
+
+function materialSpec(m) {
+  const t = TYPE_BY_ID[m?.type];
+  if (!t) return '（不明な材料）';
+  const ok = t.dims.every(([k]) => m.dims?.[k] != null && m.dims[k] !== '');
+  return ok ? t.spec(m.dims, m) : `${t.name}（寸法未設定）`;
+}
+
+function materialLabel(m) {
+  if (!m) return '（削除された材料）';
+  const t = TYPE_BY_ID[m.type];
+  return `${t ? t.name : ''} ${materialSpec(m)}${m.grade ? ` ${m.grade}` : ''}`.trim();
+}
+
+function is1D(m) {
+  return TYPE_BY_ID[m?.type]?.kind === '1d';
+}
+
+/** 実際に使う切断条件（案件 > 材料 > 全体設定 の順で優先） */
+function effectiveConditions(material, project, settings) {
+  const pick = (k) => project?.[k] ?? material?.[k] ?? settings?.[k] ?? 0;
+  const src = (k) => (project?.[k] != null ? '案件' : material?.[k] != null ? '材料' : '全体設定');
+  return { kerf: pick('kerf'), trim: pick('trim'), kerfFrom: src('kerf'), trimFrom: src('trim') };
+}
+
+let seq = 0;
+function newId(prefix = 'id') {
+  seq = (seq + 1) % 1e6;
+  return `${prefix}_${Date.now().toString(36)}${seq.toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+}
+
+/**
+ * 初期マスター。定尺は一般的な例で、取引先に合わせて変更する前提。
+ * 単価は登録しない（架空の金額を表示しないため）。
+ */
+function defaultMaterials() {
+  const m = (type, grade, dims, stocks, extra = {}) => ({
+    id: newId('mat'),
+    type,
+    grade,
+    dims,
+    stocks: stocks.map((length) => ({ length, price: null })),
+    kerf: null,
+    trim: null,
+    note: '',
+    ...extra,
+  });
+  return [
+    m('square_pipe', 'STKR400', { H: 50, B: 50, t: 2.3 }, [6000]),
+    m('square_pipe', 'STKR400', { H: 75, B: 75, t: 3.2 }, [6000]),
+    m('round_pipe', 'STK400', { D: 48.6, t: 2.3 }, [5500]),
+    m('angle', 'SS400', { A: 50, B: 50, t: 6 }, [5500, 6000]),
+    m('channel', 'SS400', { H: 100, B: 50, t1: 5, t2: 7.5 }, [5500, 6000]),
+    m('flat_bar', 'SS400', { t: 6, W: 50 }, [5500]),
+    m('flat_bar', 'SS400', { t: 9, W: 75 }, [5500]),
+    m('round_bar', 'SS400', { D: 16 }, [5500]),
+    m('plate', 'SS400', { t: 6 }, [], { sheets: [{ width: 1219, length: 2438, price: null }] }),
+    m('plate', 'SS400', { t: 4.5 }, [], { checkered: true, sheets: [{ width: 1219, length: 2438, price: null }] }),
+  ];
+}
+
+const DEFAULT_SETTINGS = Object.freeze({ kerf: 2, trim: 0 });
+
+return { MATERIAL_TYPES, TYPE_BY_ID, materialSpec, materialLabel, is1D, effectiveConditions, newId, defaultMaterials, DEFAULT_SETTINGS };
+})();
+
+// ---- js/data/store.js
+const __m1 = (() => {
+// データ保存層。UI はこのインターフェース（すべて Promise を返す）だけを使う。
+// 第1段階は localStorage。Firebase 連携時は同じメソッドを持つ FirebaseStore に差し替える。
+const { defaultMaterials, DEFAULT_SETTINGS, newId } = __m0;
+const KEY = 'steelcut:v1';
+
+function emptyState() {
+  return { version: 1, settings: { ...DEFAULT_SETTINGS }, materials: defaultMaterials(), projects: [] };
+}
+
+class LocalStore {
+  constructor(storage = globalThis.localStorage) {
+    this.storage = storage;
+    this.listeners = new Set();
+    this.state = this.#load();
+  }
+
+  #load() {
+    try {
+      const raw = this.storage?.getItem(KEY);
+      if (raw) {
+        const s = JSON.parse(raw);
+        if (s && s.version === 1) return { ...emptyState(), ...s, settings: { ...DEFAULT_SETTINGS, ...s.settings } };
+      }
+    } catch (e) {
+      console.warn('保存データを読み込めませんでした', e);
+    }
+    const s = emptyState();
+    this.#write(s);
+    return s;
+  }
+
+  #write(s) {
+    try {
+      this.storage?.setItem(KEY, JSON.stringify(s));
+    } catch (e) {
+      console.warn('保存に失敗しました', e);
+      throw new Error('端末への保存に失敗しました（容量不足またはプライベートモードの可能性）');
+    }
+  }
+
+  #commit() {
+    this.#write(this.state);
+    for (const fn of this.listeners) fn(this.state);
+  }
+
+  onChange(fn) {
+    this.listeners.add(fn);
+    return () => this.listeners.delete(fn);
+  }
+
+  // --- 設定
+  async getSettings() {
+    return structuredClone(this.state.settings);
+  }
+  async saveSettings(settings) {
+    this.state.settings = { ...this.state.settings, ...settings };
+    this.#commit();
+  }
+
+  // --- 材料マスター
+  async listMaterials() {
+    return structuredClone(this.state.materials);
+  }
+  async saveMaterial(m) {
+    const item = { ...m, id: m.id ?? newId('mat'), updatedAt: new Date().toISOString() };
+    const i = this.state.materials.findIndex((x) => x.id === item.id);
+    if (i >= 0) this.state.materials[i] = item;
+    else this.state.materials.push(item);
+    this.#commit();
+    return structuredClone(item);
+  }
+  async deleteMaterial(id) {
+    this.state.materials = this.state.materials.filter((x) => x.id !== id);
+    this.#commit();
+  }
+  /** 案件で使われている材料ID → 案件名の一覧 */
+  async materialUsage(id) {
+    return this.state.projects.filter((p) => p.lines.some((l) => l.materialId === id)).map((p) => p.name);
+  }
+
+  // --- 案件
+  async listProjects() {
+    return structuredClone(this.state.projects).sort((a, b) => (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''));
+  }
+  async getProject(id) {
+    const p = this.state.projects.find((x) => x.id === id);
+    return p ? structuredClone(p) : null;
+  }
+  async saveProject(p) {
+    const now = new Date().toISOString();
+    const item = { kerf: null, trim: null, lines: [], note: '', client: '', ...p, id: p.id ?? newId('prj'), createdAt: p.createdAt ?? now, updatedAt: now };
+    const i = this.state.projects.findIndex((x) => x.id === item.id);
+    if (i >= 0) this.state.projects[i] = item;
+    else this.state.projects.push(item);
+    this.#commit();
+    return structuredClone(item);
+  }
+  async deleteProject(id) {
+    this.state.projects = this.state.projects.filter((x) => x.id !== id);
+    this.#commit();
+  }
+
+  // --- バックアップ（Firebase 連携までの端末間移行用）
+  async exportAll() {
+    return JSON.stringify({ ...this.state, exportedAt: new Date().toISOString() }, null, 2);
+  }
+  async importAll(json) {
+    const s = JSON.parse(json);
+    if (!s || s.version !== 1 || !Array.isArray(s.materials) || !Array.isArray(s.projects)) {
+      throw new Error('このアプリのバックアップファイルではありません');
+    }
+    this.state = { version: 1, settings: { ...DEFAULT_SETTINGS, ...s.settings }, materials: s.materials, projects: s.projects };
+    this.#commit();
+  }
+}
+
+return { LocalStore };
+})();
+
+// ---- js/ui/dom.js
+const __m2 = (() => {
+// 画面共通の小さなヘルパー
+
+const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ESC[c]);
+
+/** 数値の桁区切り表示 */
+const num = (v) => (v == null ? '—' : Number(v).toLocaleString('ja-JP'));
+const yen = (v) => (v == null ? '未登録' : `¥${Number(v).toLocaleString('ja-JP')}`);
+
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+
+let toastTimer;
+function toast(msg, kind = 'info') {
+  let el = $('#toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'toast';
+    el.setAttribute('role', 'status');
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.className = `toast show ${kind}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (el.className = `toast ${kind}`), 2600);
+}
+
+function formatDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+/** フォーム項目の下にエラーを表示（null で消す） */
+function fieldError(input, message) {
+  const wrap = input.closest('.field') ?? input.parentElement;
+  let el = wrap.querySelector('.field-error');
+  if (!message) {
+    el?.remove();
+    input.removeAttribute('aria-invalid');
+    return;
+  }
+  if (!el) {
+    el = document.createElement('div');
+    el.className = 'field-error';
+    wrap.appendChild(el);
+  }
+  el.textContent = message;
+  input.setAttribute('aria-invalid', 'true');
+}
+
+return { esc, num, yen, $, $$, toast, formatDate, fieldError };
+})();
+
+// ---- js/ui/view-home.js
+const __m3 = (() => {
+const { esc, formatDate, toast } = __m2;
+async function renderHome({ store, app, navigate }) {
+  const projects = await store.listProjects();
+  app.innerHTML = `
+    <div class="page-head">
+      <h1>案件一覧</h1>
+      <button class="btn primary" id="new-project">＋ 新規案件</button>
+    </div>
+    <form id="new-form" class="card new-form" hidden>
+      <div class="field">
+        <label for="np-name">案件名</label>
+        <input id="np-name" name="name" required maxlength="80" placeholder="例：○○様 階段手摺" autocomplete="off">
+      </div>
+      <div class="actions">
+        <button type="button" class="btn ghost" id="np-cancel">キャンセル</button>
+        <button class="btn primary" type="submit">作成して材料入力へ</button>
+      </div>
+    </form>
+    ${
+      projects.length === 0
+        ? `<div class="empty card">
+             <p><strong>まだ案件がありません。</strong></p>
+             <p class="muted">「新規案件」から案件名を登録し、必要な材料の寸法と本数を入力すると、定尺からの切断パターンを計算します。</p>
+           </div>`
+        : `<ul class="project-list">${projects
+            .map((p) => {
+              const qty = p.lines.reduce((a, l) => a + l.qty, 0);
+              const mats = new Set(p.lines.map((l) => l.materialId)).size;
+              return `<li><a class="project-item card" href="#/p/${esc(p.id)}">
+                <span class="pi-name">${esc(p.name)}</span>
+                ${p.client ? `<span class="pi-client">${esc(p.client)}</span>` : ''}
+                <span class="pi-meta"><span>${mats}材料・${qty}本</span><span>更新 ${esc(formatDate(p.updatedAt))}</span></span>
+              </a></li>`;
+            })
+            .join('')}</ul>`
+    }`;
+
+  const form = app.querySelector('#new-form');
+  app.querySelector('#new-project').addEventListener('click', () => {
+    form.hidden = false;
+    form.querySelector('input').focus();
+  });
+  app.querySelector('#np-cancel').addEventListener('click', () => (form.hidden = true));
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = form.querySelector('#np-name').value.trim();
+    if (!name) return;
+    const p = await store.saveProject({ name });
+    toast('案件を作成しました');
+    navigate(`/p/${p.id}`);
+  });
+}
+
+return { renderHome };
+})();
+
+// ---- js/core/units.js
+const __m4 = (() => {
+// 入力値の正規化と整数mm検証（DOM非依存）
+
+/** 全角数字・全角記号を半角に、桁区切りカンマと空白を除去 */
+function normalizeNumeric(raw) {
+  return String(raw ?? '')
+    .replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
+    .replace(/[．]/g, '.')
+    .replace(/[－ー−]/g, '-')
+    .replace(/[,，\s]/g, '');
+}
+
+/**
+ * 整数を検証して返す。
+ * @returns {{ok:true,value:number|null}|{ok:false,error:string}}
+ */
+function parseInteger(raw, { label = '値', min = 0, max = 1_000_000, allowEmpty = false, unit = 'mm' } = {}) {
+  const s = normalizeNumeric(raw);
+  if (s === '') {
+    if (allowEmpty) return { ok: true, value: null };
+    return { ok: false, error: `${label}を入力してください` };
+  }
+  if (!/^-?\d+$/.test(s)) {
+    if (/^-?\d*\.\d+$/.test(s)) return { ok: false, error: `${label}は整数（${unit}）で入力してください` };
+    return { ok: false, error: `${label}は数値で入力してください` };
+  }
+  const v = Number(s);
+  if (!Number.isSafeInteger(v)) return { ok: false, error: `${label}が大きすぎます` };
+  if (v < min) return { ok: false, error: `${label}は${min}${unit}以上にしてください` };
+  if (v > max) return { ok: false, error: `${label}は${max}${unit}以下にしてください` };
+  return { ok: true, value: v };
+}
+
+const parseMm = (raw, opts = {}) => parseInteger(raw, { unit: 'mm', ...opts });
+const parseQty = (raw, opts = {}) => parseInteger(raw, { unit: '本', min: 1, max: 10000, label: '本数', ...opts });
+const parseYen = (raw, opts = {}) => parseInteger(raw, { unit: '円', min: 0, max: 100_000_000, label: '単価', allowEmpty: true, ...opts });
+
+/** 断面寸法など表示用の寸法（小数1〜2桁可、例：2.3）。計算には使わない。 */
+function parseDimension(raw, { label = '寸法', allowEmpty = false } = {}) {
+  const s = normalizeNumeric(raw);
+  if (s === '') return allowEmpty ? { ok: true, value: null } : { ok: false, error: `${label}を入力してください` };
+  if (!/^\d+(\.\d{1,2})?$/.test(s)) return { ok: false, error: `${label}は正の数値（小数2桁まで）で入力してください` };
+  const v = Number(s);
+  if (v <= 0) return { ok: false, error: `${label}は0より大きくしてください` };
+  return { ok: true, value: v };
+}
+
+function formatMm(v) {
+  return v == null ? '—' : `${Number(v).toLocaleString('ja-JP')}`;
+}
+
+function formatYen(v) {
+  return v == null ? '未登録' : `¥${Number(v).toLocaleString('ja-JP')}`;
+}
+
+return { normalizeNumeric, parseInteger, parseMm, parseQty, parseYen, parseDimension, formatMm, formatYen };
+})();
+
+// ---- js/ui/view-project.js
+const __m5 = (() => {
+const { esc, num, toast, fieldError, $ } = __m2;
+const { MATERIAL_TYPES, materialLabel, materialSpec, is1D, effectiveConditions, newId, TYPE_BY_ID } = __m0;
+const { parseMm, parseQty } = __m4;
+const LAST_MAT_KEY = 'steelcut:lastMaterial';
+const MAX_LEN = 100000;
+
+function materialOptions(materials, selected) {
+  return MATERIAL_TYPES.map((t) => {
+    const items = materials.filter((m) => m.type === t.id);
+    if (!items.length) return '';
+    const disabled = t.kind !== '1d';
+    return `<optgroup label="${esc(t.name)}${disabled ? '（板取りは後続フェーズ）' : ''}">${items
+      .map(
+        (m) =>
+          `<option value="${esc(m.id)}" ${m.id === selected ? 'selected' : ''} ${disabled ? 'disabled' : ''}>${esc(materialSpec(m))}${m.grade ? ` ${esc(m.grade)}` : ''}</option>`,
+      )
+      .join('')}</optgroup>`;
+  }).join('');
+}
+
+async function renderProject({ store, app, args, navigate }) {
+  const [id] = args;
+  let project = await store.getProject(id);
+  if (!project) {
+    app.innerHTML = `<div class="card"><h2>案件が見つかりません</h2><a class="btn" href="#/">案件一覧へ</a></div>`;
+    return;
+  }
+  const materials = await store.listMaterials();
+  const settings = await store.getSettings();
+  const usable = materials.filter(is1D);
+  const matById = new Map(materials.map((m) => [m.id, m]));
+  let lastMat = localStorage.getItem(LAST_MAT_KEY);
+  if (!usable.some((m) => m.id === lastMat)) lastMat = usable[0]?.id ?? '';
+
+  app.innerHTML = `
+    <div class="page-head">
+      <a href="#/" class="back">‹ 案件一覧</a>
+    </div>
+    <section class="card project-info">
+      <div class="field">
+        <label for="p-name">案件名</label>
+        <input id="p-name" class="input-title" value="${esc(project.name)}" maxlength="80" autocomplete="off">
+      </div>
+      <div class="grid-2">
+        <div class="field"><label for="p-client">取引先・現場</label><input id="p-client" value="${esc(project.client)}" maxlength="80" autocomplete="off"></div>
+        <div class="field"><label for="p-note">メモ</label><input id="p-note" value="${esc(project.note)}" maxlength="200" autocomplete="off"></div>
+      </div>
+    </section>
+
+    <section class="card add-card" aria-labelledby="add-h">
+      <h2 id="add-h">部材を追加</h2>
+      ${
+        usable.length === 0
+          ? `<p class="muted">材料マスターに材料がありません。<a href="#/master">材料マスター</a>で登録してください。</p>`
+          : `<form id="add-form" novalidate>
+        <div class="field">
+          <label for="a-mat">材料</label>
+          <select id="a-mat">${materialOptions(materials, lastMat)}</select>
+        </div>
+        <div class="add-row">
+          <div class="field f-len">
+            <label for="a-len">寸法 <span class="unit">mm</span></label>
+            <input id="a-len" inputmode="numeric" enterkeyhint="next" autocomplete="off" placeholder="例 1200">
+          </div>
+          <div class="field f-qty">
+            <label for="a-qty">本数</label>
+            <div class="stepper">
+              <button type="button" class="step" data-step="-1" aria-label="1本減らす">−</button>
+              <input id="a-qty" inputmode="numeric" enterkeyhint="done" autocomplete="off" value="1">
+              <button type="button" class="step" data-step="1" aria-label="1本増やす">＋</button>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label for="a-label">符号・部材名 <span class="muted">（任意）</span></label>
+          <input id="a-label" maxlength="30" autocomplete="off" placeholder="例 柱、横桟、C1">
+        </div>
+        <button class="btn primary block" type="submit">追加</button>
+      </form>`
+      }
+    </section>
+
+    <section aria-labelledby="lines-h">
+      <h2 id="lines-h" class="section-h">材料・部材一覧</h2>
+      <div id="lines"></div>
+    </section>
+
+    <details class="card conditions" id="cond">
+      <summary>切断条件（この案件だけ変更する場合）</summary>
+      <p class="muted small">空欄の場合は、材料ごとの設定 → 全体設定（切断幅 ${num(settings.kerf)}mm・端部切り落とし ${num(settings.trim)}mm）の順で使います。</p>
+      <div class="grid-2">
+        <div class="field"><label for="c-kerf">切断幅 <span class="unit">mm</span></label>
+          <input id="c-kerf" inputmode="numeric" value="${project.kerf ?? ''}" placeholder="材料・全体設定に従う"></div>
+        <div class="field"><label for="c-trim">端部切り落とし <span class="unit">mm</span></label>
+          <input id="c-trim" inputmode="numeric" value="${project.trim ?? ''}" placeholder="材料・全体設定に従う"></div>
+      </div>
+      <div id="cond-eff"></div>
+    </details>
+
+    <div class="sticky-cta">
+      <button class="btn primary block lg" id="calc">切断パターンを計算 →</button>
+    </div>
+
+    <div class="danger-zone">
+      <button class="btn danger ghost" id="del-project">この案件を削除</button>
+    </div>
+  `;
+
+  const save = async () => {
+    project = await store.saveProject(project);
+  };
+
+  // --- 案件情報（入力を離れたら保存）
+  for (const [sel, key] of [['#p-name', 'name'], ['#p-client', 'client'], ['#p-note', 'note']]) {
+    $(sel, app).addEventListener('change', async (e) => {
+      const v = e.target.value.trim();
+      if (key === 'name' && !v) {
+        e.target.value = project.name;
+        toast('案件名は空にできません', 'error');
+        return;
+      }
+      project[key] = v;
+      await save();
+      toast('保存しました');
+    });
+  }
+
+  // --- 切断条件（案件別）
+  for (const [sel, key, label] of [['#c-kerf', 'kerf', '切断幅'], ['#c-trim', 'trim', '端部切り落とし']]) {
+    const input = $(sel, app);
+    input.addEventListener('change', async () => {
+      const r = parseMm(input.value, { label, allowEmpty: true, max: 1000 });
+      if (!r.ok) return fieldError(input, r.error);
+      fieldError(input, null);
+      project[key] = r.value;
+      await save();
+      renderConditions();
+      toast('切断条件を保存しました');
+    });
+  }
+
+  function renderConditions() {
+    const used = [...new Set(project.lines.map((l) => l.materialId))].map((id) => matById.get(id)).filter(is1D);
+    const el = $('#cond-eff', app);
+    if (!used.length) {
+      el.innerHTML = '';
+      return;
+    }
+    el.innerHTML = `<table class="table small"><thead><tr><th>材料</th><th class="r">切断幅</th><th class="r">端部</th></tr></thead><tbody>${used
+      .map((m) => {
+        const c = effectiveConditions(m, project, settings);
+        return `<tr><td>${esc(materialLabel(m))}</td><td class="r">${c.kerf}mm<span class="src">${c.kerfFrom}</span></td><td class="r">${c.trim}mm<span class="src">${c.trimFrom}</span></td></tr>`;
+      })
+      .join('')}</tbody></table>`;
+  }
+
+  // --- 部材一覧
+  let editingId = null;
+  function renderLines() {
+    const el = $('#lines', app);
+    if (!project.lines.length) {
+      el.innerHTML = `<div class="empty card muted">部材はまだありません。上のフォームから追加してください。</div>`;
+      renderConditions();
+      return;
+    }
+    const groups = new Map();
+    for (const l of project.lines) {
+      if (!groups.has(l.materialId)) groups.set(l.materialId, []);
+      groups.get(l.materialId).push(l);
+    }
+    el.innerHTML = [...groups]
+      .map(([mid, lines]) => {
+        const m = matById.get(mid);
+        const total = lines.reduce((a, l) => a + l.qty, 0);
+        const totalLen = lines.reduce((a, l) => a + l.qty * l.length, 0);
+        const warn = !m ? 'マスターから削除された材料です' : !is1D(m) ? '板取り計算は後続フェーズです' : !m.stocks?.length ? '定尺が未登録です（材料マスターで登録）' : '';
+        return `<div class="card line-group">
+          <div class="lg-head">
+            <div><span class="type-tag">${esc(TYPE_BY_ID[m?.type]?.name ?? '不明')}</span>
+            <strong>${esc(m ? materialSpec(m) : '（削除された材料）')}</strong> <span class="muted">${esc(m?.grade ?? '')}</span></div>
+            <div class="lg-sum">${num(total)}本・計 ${num(totalLen)}mm</div>
+          </div>
+          ${warn ? `<p class="warn small">⚠ ${esc(warn)}</p>` : ''}
+          <ul class="lines">${lines
+            .sort((a, b) => b.length - a.length)
+            .map((l) => (l.id === editingId ? editRow(l) : viewRow(l)))
+            .join('')}</ul>
+        </div>`;
+      })
+      .join('');
+    renderConditions();
+    const editing = $('.line.editing input[name=length]', el);
+    if (editing) editing.focus();
+  }
+
+  const viewRow = (l) => `<li class="line" data-id="${esc(l.id)}">
+      <span class="l-len">${num(l.length)}<small>mm</small></span>
+      <span class="l-qty">× ${num(l.qty)}<small>本</small></span>
+      <span class="l-label">${esc(l.label)}</span>
+      <span class="l-act">
+        <button class="icon-btn" data-act="edit" aria-label="編集">編集</button>
+        <button class="icon-btn danger" data-act="del" aria-label="削除">削除</button>
+      </span>
+    </li>`;
+
+  const editRow = (l) => `<li class="line editing" data-id="${esc(l.id)}">
+      <form class="edit-form" novalidate>
+        <div class="field"><label>材料</label><select name="material">${materialOptions(materials, l.materialId)}</select></div>
+        <div class="add-row">
+          <div class="field f-len"><label>寸法 <span class="unit">mm</span></label><input name="length" inputmode="numeric" value="${l.length}" autocomplete="off"></div>
+          <div class="field f-qty"><label>本数</label><input name="qty" inputmode="numeric" value="${l.qty}" autocomplete="off"></div>
+        </div>
+        <div class="field"><label>符号・部材名</label><input name="label" maxlength="30" value="${esc(l.label)}" autocomplete="off"></div>
+        <div class="actions">
+          <button type="button" class="btn ghost" data-act="cancel">取消</button>
+          <button class="btn primary" type="submit">保存</button>
+        </div>
+      </form>
+    </li>`;
+
+  const linesEl = $('#lines', app);
+  linesEl.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-act]');
+    if (!btn) return;
+    const li = btn.closest('.line');
+    const line = project.lines.find((x) => x.id === li?.dataset.id);
+    if (!line) return;
+    if (btn.dataset.act === 'edit') {
+      editingId = line.id;
+      renderLines();
+    } else if (btn.dataset.act === 'cancel') {
+      editingId = null;
+      renderLines();
+    } else if (btn.dataset.act === 'del') {
+      if (!confirm(`${num(line.length)}mm × ${line.qty}本${line.label ? `（${line.label}）` : ''} を削除しますか？`)) return;
+      project.lines = project.lines.filter((x) => x.id !== line.id);
+      await save();
+      renderLines();
+      toast('削除しました');
+    }
+  });
+  linesEl.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const line = project.lines.find((x) => x.id === f.closest('.line').dataset.id);
+    const lenIn = f.querySelector('[name=length]');
+    const qtyIn = f.querySelector('[name=qty]');
+    const len = parseMm(lenIn.value, { label: '寸法', min: 1, max: MAX_LEN });
+    const qty = parseQty(qtyIn.value);
+    fieldError(lenIn, len.ok ? null : len.error);
+    fieldError(qtyIn, qty.ok ? null : qty.error);
+    if (!len.ok || !qty.ok) return;
+    Object.assign(line, {
+      materialId: f.querySelector('[name=material]').value,
+      length: len.value,
+      qty: qty.value,
+      label: f.querySelector('[name=label]').value.trim(),
+    });
+    editingId = null;
+    await save();
+    renderLines();
+    toast('変更を保存しました');
+  });
+
+  // --- 追加フォーム
+  const form = $('#add-form', app);
+  if (form) {
+    const qtyIn = $('#a-qty', form);
+    const lenIn = $('#a-len', form);
+    form.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-step]');
+      if (!b) return;
+      const cur = parseQty(qtyIn.value);
+      const v = Math.max(1, (cur.ok ? cur.value : 1) + Number(b.dataset.step));
+      qtyIn.value = String(v);
+      fieldError(qtyIn, null);
+    });
+    lenIn.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        qtyIn.focus();
+        qtyIn.select();
+      }
+    });
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const matId = $('#a-mat', form).value;
+      const len = parseMm(lenIn.value, { label: '寸法', min: 1, max: MAX_LEN });
+      const qty = parseQty(qtyIn.value);
+      fieldError(lenIn, len.ok ? null : len.error);
+      fieldError(qtyIn, qty.ok ? null : qty.error);
+      if (!len.ok || !qty.ok || !matId) return;
+      const m = matById.get(matId);
+      const maxStock = Math.max(0, ...(m.stocks ?? []).map((s) => s.length));
+      if (maxStock && len.value > maxStock) {
+        fieldError(lenIn, `最長の定尺 ${num(maxStock)}mm より長い寸法です`);
+        return;
+      }
+      const label = $('#a-label', form).value.trim();
+      // 同じ材料・寸法・符号の行があれば本数を加算
+      const same = project.lines.find((l) => l.materialId === matId && l.length === len.value && (l.label ?? '') === label);
+      if (same) same.qty += qty.value;
+      else project.lines.push({ id: newId('ln'), materialId: matId, length: len.value, qty: qty.value, label });
+      localStorage.setItem(LAST_MAT_KEY, matId);
+      await save();
+      renderLines();
+      toast(same ? `既存の行に ${qty.value}本 加算しました` : `${num(len.value)}mm × ${qty.value}本 を追加しました`);
+      lenIn.value = '';
+      qtyIn.value = '1';
+      $('#a-label', form).value = '';
+      lenIn.focus();
+    });
+  }
+
+  $('#calc', app).addEventListener('click', () => {
+    if (!project.lines.length) {
+      toast('部材を追加してください', 'error');
+      return;
+    }
+    navigate(`/p/${project.id}/result`);
+  });
+
+  $('#del-project', app).addEventListener('click', async () => {
+    if (!confirm(`案件「${project.name}」を削除します。元に戻せません。よろしいですか？`)) return;
+    await store.deleteProject(project.id);
+    toast('案件を削除しました');
+    navigate('/');
+  });
+
+  renderLines();
+}
+
+return { renderProject };
+})();
+
+// ---- js/core/job.js
+const __m6 = (() => {
+// 案件データ → 材料ごとの最適化入力 への変換（DOM非依存）
+const { is1D, effectiveConditions, materialLabel } = __m0;
+/**
+ * @returns {{jobs: {material, conditions, input}[], skipped: {material, lines, reason}[]}}
+ */
+function buildJobs(project, materials, settings) {
+  const matById = new Map(materials.map((m) => [m.id, m]));
+  const groups = new Map();
+  for (const line of project.lines ?? []) {
+    if (!groups.has(line.materialId)) groups.set(line.materialId, []);
+    groups.get(line.materialId).push(line);
+  }
+  const jobs = [];
+  const skipped = [];
+  for (const [materialId, lines] of groups) {
+    const material = matById.get(materialId);
+    if (!material) {
+      skipped.push({ material: null, lines, reason: 'マスターから削除された材料です。材料を選び直してください。' });
+      continue;
+    }
+    if (!is1D(material)) {
+      skipped.push({ material, lines, reason: '鋼板・縞板の板取り計算は後続フェーズで対応予定です。' });
+      continue;
+    }
+    const conditions = effectiveConditions(material, project, settings);
+    jobs.push({
+      material,
+      title: materialLabel(material),
+      conditions,
+      input: {
+        pieces: lines.map((l) => ({ length: l.length, qty: l.qty, label: l.label ?? '' })),
+        stocks: (material.stocks ?? []).map((s) => ({ length: s.length, price: s.price ?? null })),
+        kerf: conditions.kerf,
+        trim: conditions.trim,
+      },
+    });
+  }
+  return { jobs, skipped };
+}
+
+return { buildJobs };
+})();
+
+// ---- js/ui/optimizer-client.js
+const __m7 = (() => {
+// Web Worker 経由で最適化を実行（Worker が使えない環境ではメインスレッドで実行）
+let worker = null;
+let workerFailed = false;
+let seq = 0;
+const pending = new Map();
+
+function getWorker() {
+  if (workerFailed) return null;
+  if (worker) return worker;
+  try {
+    // 1ファイル版（dist/index.html）では埋め込まれたソースから Worker を作る
+    const embedded = globalThis.__STEELCUT_WORKER_SRC__;
+    worker = embedded
+      ? new Worker(URL.createObjectURL(new Blob([embedded], { type: 'text/javascript' })))
+      : new Worker(new URL('../workers/optimize-worker.js', import.meta.url), { type: 'module' });
+    worker.onmessage = (ev) => {
+      const p = pending.get(ev.data.id);
+      if (!p) return;
+      pending.delete(ev.data.id);
+      if (ev.data.error) p.reject(new Error(ev.data.error));
+      else p.resolve(ev.data);
+    };
+    worker.onerror = (e) => {
+      console.warn('Worker エラー。メインスレッドで計算します', e);
+      workerFailed = true;
+      worker = null;
+      for (const [, p] of pending) p.retry();
+      pending.clear();
+    };
+    return worker;
+  } catch {
+    workerFailed = true;
+    return null;
+  }
+}
+
+async function runInline(input) {
+  const core = globalThis.__STEELCUT_CORE__;
+  const [{ optimize1D }, { verify1D }] = core
+    ? [core, core]
+    : await Promise.all([import('../core/cutting1d.js'), import('../core/verify.js')]);
+  await new Promise((r) => setTimeout(r, 0));
+  const result = optimize1D(input);
+  return { result, verification: result.ok ? verify1D(input, result) : null };
+}
+
+function optimize(input) {
+  const w = getWorker();
+  if (!w) return runInline(input);
+  return new Promise((resolve, reject) => {
+    const id = ++seq;
+    pending.set(id, { resolve, reject, retry: () => runInline(input).then(resolve, reject) });
+    w.postMessage({ id, input });
+  });
+}
+
+return { optimize };
+})();
+
+// ---- js/ui/view-result.js
+const __m8 = (() => {
+const { esc, num, yen, formatDate, $ } = __m2;
+const { buildJobs } = __m6;
+const { TYPE_BY_ID, materialSpec } = __m0;
+const { optimize } = __m7;
+const letter = (i) => (i < 26 ? String.fromCharCode(65 + i) : `P${i + 1}`);
+const pct = (v) => `${(v * 100).toFixed(1)}%`;
+
+function optimalityBadge(r) {
+  const basis = r.conditions.costBasis === 'price' ? '本数・費用・ロス' : '本数・購入長さ';
+  if (r.optimality === 'proven') return `<span class="badge ok">最適解（${basis}）</span>`;
+  if (r.optimality === 'bars-proven')
+    return `<span class="badge ok">本数は最適</span><span class="badge warn">定尺の組合せは最安と未確認</span>`;
+  const gap = r.summary.barCount - r.lowerBound;
+  return `<span class="badge warn">近似解：理論下限 ${r.lowerBound}本（最大 ${gap}本 多い可能性）</span>`;
+}
+
+function verifyBadge(v) {
+  if (!v) return '';
+  return v.ok
+    ? `<span class="badge ok" title="本数・寸法・ロス・残材を独立に再計算して照合">✓ 検算OK（${v.checks}項目）</span>`
+    : `<span class="badge err">✕ 検算エラー</span>`;
+}
+
+/** 1本分の切断図（部材は長さに比例、切断は固定幅の線で表示） */
+function barDiagram(p, kerf, trim) {
+  const L = p.stockLength;
+  const seg = [];
+  if (trim > 0) seg.push(`<span class="seg trim" style="flex-basis:${(trim / L) * 100}%" title="端部切り落とし ${trim}mm"></span><span class="seg cut"></span>`);
+  const pieces = p.pieces.flatMap((g) => Array(g.count).fill(g));
+  pieces.forEach((g, i) => {
+    if (i > 0) seg.push(`<span class="seg cut" title="切断幅 ${kerf}mm"></span>`);
+    const w = (g.length / L) * 100;
+    seg.push(`<span class="seg piece" style="flex-basis:${w}%" title="${num(g.length)}mm ${esc(g.label)}"><span class="seg-t">${w > 7 ? num(g.length) : ''}</span></span>`);
+  });
+  if (p.remnant > 0) {
+    seg.push(`<span class="seg cut"></span><span class="seg rem" style="flex-basis:${(p.remnant / L) * 100}%" title="残材 ${p.remnant}mm"><span class="seg-t">${p.remnant / L > 0.07 ? num(p.remnant) : ''}</span></span>`);
+  } else if (p.kerfLoss > (pieces.length - 1 + (trim > 0 ? 1 : 0)) * kerf) {
+    seg.push(`<span class="seg cut"></span>`);
+  }
+  return `<div class="bar" role="img" aria-label="定尺${num(L)}mmの切断図">${seg.join('')}</div>`;
+}
+
+function jobCard(job, r, v, idx) {
+  const t = TYPE_BY_ID[job.material.type];
+  const c = r.conditions;
+  const s = r.summary;
+  const unpriced = s.byStock.some((x) => x.price == null);
+  return `<section class="card job" id="job-${idx}">
+    <header class="job-head">
+      <div><span class="type-tag">${esc(t.name)}</span><h2>${esc(materialSpec(job.material))} <span class="muted">${esc(job.material.grade ?? '')}</span></h2></div>
+      <div class="badges">${optimalityBadge(r)}${verifyBadge(v)}</div>
+    </header>
+    ${v && !v.ok ? `<ul class="errors">${v.errors.map((e) => `<li>${esc(e)}</li>`).join('')}</ul>` : ''}
+
+    <p class="cond-line">計算条件：切断幅 <b>${c.kerf}mm</b>（${esc(job.conditions.kerfFrom)}）／端部切り落とし <b>${c.trim}mm</b>（${esc(job.conditions.trimFrom)}）${
+      c.trim > 0 ? `→ 1本につき先端 ${c.headLoss}mm（切り落とし＋切断幅）` : ''
+    }／使用可能な定尺：${c.stocks.map((x) => `${num(x.length)}mm`).join('・')}</p>
+
+    <div class="stats">
+      <div class="stat main"><span class="k">必要定尺</span><span class="v">${s.byStock
+        .map((x) => `${num(x.length)}<small>mm</small> × <b>${x.count}</b><small>本</small>`)
+        .join('<br>')}</span></div>
+      <div class="stat"><span class="k">部材合計</span><span class="v">${num(s.pieceLength)}<small>mm</small></span><span class="sub">${s.pieceCount}本</span></div>
+      <div class="stat"><span class="k">切断ロス</span><span class="v">${num(s.kerfLoss)}<small>mm</small></span><span class="sub">切断 ${s.cutCount}回</span></div>
+      <div class="stat"><span class="k">端部切り落とし</span><span class="v">${num(s.trimLoss)}<small>mm</small></span></div>
+      <div class="stat"><span class="k">残材（計算上）</span><span class="v">${num(s.remnant)}<small>mm</small></span></div>
+      <div class="stat"><span class="k">歩留まり</span><span class="v">${pct(s.yieldRate)}</span><span class="sub">購入 ${num(s.purchasedLength)}mm</span></div>
+      <div class="stat"><span class="k">材料費（定尺）</span><span class="v">${s.materialCost == null ? '<span class="na">—</span>' : yen(s.materialCost)}</span>${
+        unpriced ? '<span class="sub">単価未登録のため表示しません</span>' : ''
+      }</div>
+    </div>
+
+    <h3>切断パターン</h3>
+    <ol class="patterns">${r.patterns
+      .map(
+        (p, i) => `<li class="pattern">
+        <div class="p-head">
+          <span class="p-name">${letter(i)}</span>
+          <span>定尺 <b>${num(p.stockLength)}</b>mm × <b class="rep">${p.repeat}本</b></span>
+          <span class="muted small">No.${p.barNos.length > 2 ? `${p.barNos[0]}〜${p.barNos[p.barNos.length - 1]}` : p.barNos.join(', ')}</span>
+        </div>
+        ${barDiagram(p, c.kerf, c.trim)}
+        <ul class="chips">${p.pieces
+          .map((g) => `<li><b>${num(g.length)}</b>mm${g.label ? ` <span class="lbl">${esc(g.label)}</span>` : ''} × ${g.count}</li>`)
+          .join('')}</ul>
+        <div class="p-foot">
+          <span>部材 ${num(p.pieceSum)}mm</span>
+          <span>切断ロス ${num(p.kerfLoss)}mm</span>
+          ${p.trimLoss ? `<span>端部 ${num(p.trimLoss)}mm</span>` : ''}
+          <span class="rem-t">残材 <b>${num(p.remnant)}</b>mm</span>
+        </div>
+      </li>`,
+      )
+      .join('')}</ol>
+  </section>`;
+}
+
+/** 切断図の寸法文字が区画からはみ出す場合は隠す */
+function fitLabels(root) {
+  for (const t of root.querySelectorAll('.seg-t')) {
+    t.classList.remove('hide');
+    if (t.scrollWidth > t.parentElement.clientWidth - 2) t.classList.add('hide');
+  }
+}
+let resizeBound = false;
+
+async function renderResult({ store, app, args, isCurrent }) {
+  const [id] = args;
+  const project = await store.getProject(id);
+  if (!project) {
+    app.innerHTML = `<div class="card"><h2>案件が見つかりません</h2><a class="btn" href="#/">案件一覧へ</a></div>`;
+    return;
+  }
+  const materials = await store.listMaterials();
+  const settings = await store.getSettings();
+  const { jobs, skipped } = buildJobs(project, materials, settings);
+  const now = new Date().toISOString();
+
+  app.innerHTML = `
+    <div class="page-head no-print">
+      <a href="#/p/${esc(project.id)}" class="back">‹ 材料入力に戻る</a>
+      <button class="btn" id="print">印刷</button>
+    </div>
+    <header class="result-head">
+      <p class="muted small">切断最適化結果</p>
+      <h1>${esc(project.name)}</h1>
+      <p class="muted small">${project.client ? `${esc(project.client)}・` : ''}計算日時 ${esc(formatDate(now))}</p>
+    </header>
+    <section class="card legend no-print-break">
+      <h2 class="small-h">見方</h2>
+      <div class="legend-row">
+        <span><i class="sw piece"></i>部材</span><span><i class="sw cut"></i>切断（切断幅）</span>
+        <span><i class="sw trim"></i>端部切り落とし</span><span><i class="sw rem"></i>残材</span>
+      </div>
+      <p class="muted small">先端を切り落とし（設定がある場合）、部材を順に切り出します。部材の間で切断幅を1回ずつ消費し、最後に残材を切り離します。残りが切断幅以下のときは残材なし（全量を切断ロス）とします。部材＋切断ロス＋端部切り落とし＋残材＝定尺長さ になることを自動検算しています。</p>
+    </section>
+    <section class="card" id="totals"><h2 class="small-h">定尺の必要本数まとめ</h2><p class="muted">計算中…</p></section>
+    <div id="jobs">${jobs.map((j, i) => `<section class="card job pending" id="job-${i}"><h2>${esc(j.title)}</h2><p class="muted"><span class="spinner"></span>計算中…</p></section>`).join('')}</div>
+    ${skipped
+      .map(
+        (s) => `<section class="card skipped"><h2>${esc(s.material ? `${TYPE_BY_ID[s.material.type].name} ${materialSpec(s.material)}` : '（削除された材料）')}</h2>
+        <p class="warn">${esc(s.reason)}</p>
+        <p class="muted small">対象：${s.lines.map((l) => `${num(l.length)}mm×${l.qty}本`).join('、')}</p></section>`,
+      )
+      .join('')}
+  `;
+  $('#print', app).addEventListener('click', () => window.print());
+  if (!resizeBound) {
+    resizeBound = true;
+    let tmr;
+    const refit = () => {
+      clearTimeout(tmr);
+      tmr = setTimeout(() => fitLabels(document), 100);
+    };
+    window.addEventListener('resize', refit);
+    window.addEventListener('beforeprint', () => fitLabels(document));
+  }
+
+  const totals = [];
+  for (let i = 0; i < jobs.length; i++) {
+    const job = jobs[i];
+    let html;
+    try {
+      const { result, verification } = await optimize(job.input);
+      if (!isCurrent()) return;
+      if (!result.ok) {
+        html = `<section class="card job" id="job-${i}"><h2>${esc(job.title)}</h2>
+          <p class="err-t">計算できません。以下を確認してください。</p>
+          <ul class="errors">${result.errors.map((e) => `<li>${esc(e)}</li>`).join('')}</ul>
+          <a class="btn small no-print" href="#/master/${esc(job.material.id)}">材料マスターを開く</a></section>`;
+      } else {
+        html = jobCard(job, result, verification, i);
+        totals.push({ job, result });
+      }
+    } catch (e) {
+      html = `<section class="card job" id="job-${i}"><h2>${esc(job.title)}</h2><p class="err-t">計算中にエラーが発生しました：${esc(e.message)}</p></section>`;
+    }
+    $(`#job-${i}`, app).outerHTML = html;
+    fitLabels(app);
+  }
+  if (!isCurrent()) return;
+
+  const rows = totals.flatMap(({ job, result }) =>
+    result.summary.byStock.map((x) => ({ title: job.title, ...x })),
+  );
+  const allPriced = rows.length > 0 && rows.every((r) => r.price != null);
+  $('#totals', app).innerHTML = rows.length
+    ? `<h2 class="small-h">定尺の必要本数まとめ</h2>
+      <div class="table-wrap"><table class="table">
+        <thead><tr><th>定尺</th><th class="r">本数</th><th class="r">単価</th><th class="r">小計</th></tr></thead>
+        <tbody>${totals
+          .map(
+            ({ job, result }) =>
+              `<tr class="mat-row"><td colspan="4">${esc(job.title)}</td></tr>` +
+              result.summary.byStock
+                .map(
+                  (r) => `<tr><td>${num(r.length)}mm</td><td class="r"><b>${r.count}</b>本</td><td class="r">${r.price == null ? '<span class="na">未登録</span>' : yen(r.price)}</td><td class="r">${r.subtotal == null ? '—' : yen(r.subtotal)}</td></tr>`,
+                )
+                .join(''),
+          )
+          .join('')}</tbody>
+        <tfoot><tr><th>合計</th><th class="r">${rows.reduce((a, r) => a + r.count, 0)}本</th><th></th><th class="r">${
+          allPriced ? yen(rows.reduce((a, r) => a + r.subtotal, 0)) : '<span class="na">単価未登録あり</span>'
+        }</th></tr></tfoot>
+      </table></div>
+      <p class="muted small">金額は材料マスターの定尺単価×本数のみです（切断賃・運賃は含みません）。単価が未登録の定尺があると合計は表示しません。</p>`
+    : `<h2 class="small-h">定尺の必要本数まとめ</h2><p class="muted">計算できた材料がありません。</p>`;
+}
+
+return { renderResult };
+})();
+
+// ---- js/ui/view-master.js
+const __m9 = (() => {
+const { esc, num, yen, toast, fieldError, $, $$ } = __m2;
+const { MATERIAL_TYPES, TYPE_BY_ID, materialSpec } = __m0;
+const { parseMm, parseYen, parseDimension } = __m4;
+async function renderMaster({ store, app }) {
+  const materials = await store.listMaterials();
+  const settings = await store.getSettings();
+
+  app.innerHTML = `
+    <div class="page-head"><h1>材料マスター・設定</h1></div>
+
+    <form class="card" id="settings-form" novalidate>
+      <h2>全体の切断条件</h2>
+      <p class="muted small">材料ごと・案件ごとに上書きできます。整数mmで入力してください。</p>
+      <div class="grid-2">
+        <div class="field"><label for="s-kerf">切断幅 <span class="unit">mm</span></label><input id="s-kerf" inputmode="numeric" value="${settings.kerf}"></div>
+        <div class="field"><label for="s-trim">端部切り落とし <span class="unit">mm</span></label><input id="s-trim" inputmode="numeric" value="${settings.trim}"></div>
+      </div>
+      <button class="btn primary" type="submit">保存</button>
+    </form>
+
+    <section>
+      <div class="section-row">
+        <h2 class="section-h">材料</h2>
+        <a class="btn primary" href="#/master/new">＋ 材料を追加</a>
+      </div>
+      <p class="muted small">初期データの定尺は一般的な例です。取引先の定尺・単価に合わせて修正してください。単価は未登録の状態です。</p>
+      ${MATERIAL_TYPES.map((t) => {
+        const items = materials.filter((m) => m.type === t.id);
+        return `<div class="card mat-group">
+          <div class="lg-head"><strong>${esc(t.name)}</strong>${t.kind === '2d' ? '<span class="muted small">板取り計算は後続フェーズ</span>' : ''}
+            <a class="btn small ghost" href="#/master/new?type=${t.id}">＋ 追加</a></div>
+          ${
+            items.length
+              ? `<ul class="mat-list">${items
+                  .map((m) => {
+                    const stocks =
+                      t.kind === '2d'
+                        ? (m.sheets ?? []).map((s) => `${num(s.width)}×${num(s.length)}（${yen(s.price)}）`).join('、')
+                        : (m.stocks ?? []).map((s) => `${num(s.length)}mm（${yen(s.price)}）`).join('、');
+                    return `<li><a href="#/master/${esc(m.id)}">
+                      <span class="m-spec">${esc(materialSpec(m))} <span class="muted">${esc(m.grade)}</span></span>
+                      <span class="m-stock small ${stocks ? '' : 'warn'}">${stocks || '定尺未登録'}</span>
+                    </a></li>`;
+                  })
+                  .join('')}</ul>`
+              : '<p class="muted small">登録なし</p>'
+          }
+        </div>`;
+      }).join('')}
+    </section>
+
+    <section class="card">
+      <h2>バックアップ</h2>
+      <p class="muted small">データはこの端末のブラウザに保存されています。別の端末へ移す場合や、念のための保存に使ってください（スマホとPCの自動共有は今後の Firebase 連携で対応予定）。</p>
+      <div class="actions left">
+        <button class="btn" id="export">バックアップを保存</button>
+        <label class="btn">バックアップから復元<input type="file" id="import" accept="application/json,.json" hidden></label>
+      </div>
+    </section>
+  `;
+
+  $('#settings-form', app).addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const kIn = $('#s-kerf', app);
+    const tIn = $('#s-trim', app);
+    const k = parseMm(kIn.value, { label: '切断幅', max: 1000 });
+    const t = parseMm(tIn.value, { label: '端部切り落とし', max: 1000 });
+    fieldError(kIn, k.ok ? null : k.error);
+    fieldError(tIn, t.ok ? null : t.error);
+    if (!k.ok || !t.ok) return;
+    await store.saveSettings({ kerf: k.value, trim: t.value });
+    toast('全体設定を保存しました');
+  });
+
+  $('#export', app).addEventListener('click', async () => {
+    const json = await store.exportAll();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+    const d = new Date();
+    a.download = `steelcut-backup-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+  $('#import', app).addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!confirm('現在のデータをバックアップの内容で置き換えます。よろしいですか？')) return;
+    try {
+      await store.importAll(await file.text());
+      toast('復元しました');
+      renderMaster({ store, app });
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
+}
+
+async function renderMaterialEdit({ store, app, args, params, navigate }) {
+  const [id] = args;
+  const materials = await store.listMaterials();
+  const isNew = id === 'new';
+  const found = materials.find((m) => m.id === id);
+  if (!isNew && !found) {
+    app.innerHTML = `<div class="card"><h2>材料が見つかりません</h2><a class="btn" href="#/master">材料マスターへ</a></div>`;
+    return;
+  }
+  const m = found ?? {
+    type: TYPE_BY_ID[params.type] ? params.type : 'square_pipe',
+    grade: 'SS400',
+    dims: {},
+    stocks: [{ length: 6000, price: null }],
+    sheets: [{ width: 1219, length: 2438, price: null }],
+    kerf: null,
+    trim: null,
+    note: '',
+  };
+
+  const stockRow = (s = {}) => `<li class="stock-row">
+      <div class="field"><label>定尺 <span class="unit">mm</span></label><input name="s-len" inputmode="numeric" value="${s.length ?? ''}" placeholder="6000"></div>
+      <div class="field"><label>単価 <span class="unit">円/本</span></label><input name="s-price" inputmode="numeric" value="${s.price ?? ''}" placeholder="未登録"></div>
+      <button type="button" class="icon-btn danger" data-act="rm" aria-label="この定尺を削除">削除</button>
+    </li>`;
+  const sheetRow = (s = {}) => `<li class="stock-row sheet">
+      <div class="field"><label>幅 <span class="unit">mm</span></label><input name="sh-w" inputmode="numeric" value="${s.width ?? ''}" placeholder="1219"></div>
+      <div class="field"><label>長さ <span class="unit">mm</span></label><input name="sh-l" inputmode="numeric" value="${s.length ?? ''}" placeholder="2438"></div>
+      <div class="field"><label>単価 <span class="unit">円/枚</span></label><input name="s-price" inputmode="numeric" value="${s.price ?? ''}" placeholder="未登録"></div>
+      <button type="button" class="icon-btn danger" data-act="rm" aria-label="この定尺を削除">削除</button>
+    </li>`;
+
+  app.innerHTML = `
+    <div class="page-head"><a href="#/master" class="back">‹ 材料マスター</a></div>
+    <form class="card" id="mat-form" novalidate>
+      <h1 class="h-form">${isNew ? '材料を追加' : '材料を編集'}</h1>
+      <div class="grid-2">
+        <div class="field"><label for="m-type">種別</label>
+          <select id="m-type">${MATERIAL_TYPES.map((t) => `<option value="${t.id}" ${t.id === m.type ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</select></div>
+        <div class="field"><label for="m-grade">材質</label><input id="m-grade" value="${esc(m.grade)}" maxlength="30" placeholder="SS400、STKR400 など" list="grades"></div>
+      </div>
+      <datalist id="grades"><option>SS400</option><option>STKR400</option><option>STK400</option><option>SGP</option><option>SUS304</option><option>SS400 溶融亜鉛めっき</option></datalist>
+      <fieldset class="dims"><legend>断面寸法 <span class="unit">mm</span> <span class="muted small" id="spec-preview"></span></legend><div id="dims" class="dims-grid"></div>
+        <label class="check" id="checkered-wrap"><input type="checkbox" id="m-checkered" ${m.checkered ? 'checked' : ''}> 縞板</label>
+      </fieldset>
+      <fieldset><legend id="stock-legend">定尺と単価</legend>
+        <p class="muted small">単価は空欄のままで構いません（未登録の場合は金額を表示しません）。</p>
+        <ul class="stock-list" id="stocks"></ul>
+        <button type="button" class="btn small ghost" id="add-stock">＋ 定尺を追加</button>
+      </fieldset>
+      <fieldset id="cut-fs"><legend>この材料の切断条件（空欄＝全体設定）</legend>
+        <div class="grid-2">
+          <div class="field"><label for="m-kerf">切断幅 <span class="unit">mm</span></label><input id="m-kerf" inputmode="numeric" value="${m.kerf ?? ''}" placeholder="全体設定"></div>
+          <div class="field"><label for="m-trim">端部切り落とし <span class="unit">mm</span></label><input id="m-trim" inputmode="numeric" value="${m.trim ?? ''}" placeholder="全体設定"></div>
+        </div>
+      </fieldset>
+      <div class="field"><label for="m-note">メモ</label><input id="m-note" value="${esc(m.note)}" maxlength="200" placeholder="仕入先など"></div>
+      <div class="form-errors" id="form-errors" role="alert"></div>
+      <div class="actions">
+        ${isNew ? '' : '<button type="button" class="btn danger ghost" id="del">削除</button>'}
+        <a class="btn ghost" href="#/master">キャンセル</a>
+        <button class="btn primary" type="submit">保存</button>
+      </div>
+    </form>`;
+
+  const form = $('#mat-form', app);
+  const typeSel = $('#m-type', form);
+  const dimsEl = $('#dims', form);
+  const stocksEl = $('#stocks', form);
+  const curType = () => TYPE_BY_ID[typeSel.value];
+
+  function renderDims(values) {
+    const t = curType();
+    dimsEl.innerHTML = t.dims
+      .map(([k, label]) => `<div class="field"><label>${esc(label)}</label><input name="dim-${k}" data-dim="${k}" inputmode="decimal" value="${values?.[k] ?? ''}"></div>`)
+      .join('');
+    $('#checkered-wrap', form).hidden = t.kind !== '2d';
+    $('#stock-legend', form).textContent = t.kind === '2d' ? '定尺（板サイズ）と単価' : '定尺と単価';
+    $('#cut-fs', form).hidden = t.kind === '2d';
+    updatePreview();
+  }
+  function renderStocks(list) {
+    const t = curType();
+    stocksEl.innerHTML = (list.length ? list : [{}]).map((s) => (t.kind === '2d' ? sheetRow(s) : stockRow(s))).join('');
+  }
+  function readDims() {
+    const d = {};
+    for (const inp of $$('[data-dim]', dimsEl)) d[inp.dataset.dim] = inp.value.trim();
+    return d;
+  }
+  function updatePreview() {
+    const dims = readDims();
+    $('#spec-preview', form).textContent = materialSpec({ type: typeSel.value, dims, checkered: $('#m-checkered', form).checked });
+  }
+
+  renderDims(m.dims);
+  renderStocks(curType().kind === '2d' ? m.sheets ?? [] : m.stocks ?? []);
+  typeSel.addEventListener('change', () => {
+    const was2d = stocksEl.querySelector('.sheet') != null;
+    renderDims(readDims());
+    if (was2d !== (curType().kind === '2d')) renderStocks([]);
+  });
+  dimsEl.addEventListener('input', updatePreview);
+  $('#m-checkered', form).addEventListener('change', updatePreview);
+  $('#add-stock', form).addEventListener('click', () => {
+    stocksEl.insertAdjacentHTML('beforeend', curType().kind === '2d' ? sheetRow() : stockRow());
+    stocksEl.lastElementChild.querySelector('input').focus();
+  });
+  stocksEl.addEventListener('click', (e) => {
+    if (e.target.closest('[data-act=rm]')) e.target.closest('.stock-row').remove();
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errs = [];
+    const t = curType();
+    const dims = {};
+    for (const inp of $$('[data-dim]', dimsEl)) {
+      const label = t.dims.find(([k]) => k === inp.dataset.dim)[1];
+      const r = parseDimension(inp.value, { label });
+      fieldError(inp, r.ok ? null : r.error);
+      if (!r.ok) errs.push(r.error);
+      else dims[inp.dataset.dim] = r.value;
+    }
+    const rows = $$('.stock-row', stocksEl);
+    const stocks = [];
+    const sheets = [];
+    const seen = new Set();
+    for (const row of rows) {
+      const priceIn = row.querySelector('[name=s-price]');
+      const price = parseYen(priceIn.value);
+      fieldError(priceIn, price.ok ? null : price.error);
+      if (!price.ok) errs.push(price.error);
+      if (t.kind === '2d') {
+        const wIn = row.querySelector('[name=sh-w]');
+        const lIn = row.querySelector('[name=sh-l]');
+        if (!wIn.value.trim() && !lIn.value.trim() && !priceIn.value.trim()) continue;
+        const w = parseMm(wIn.value, { label: '幅', min: 1, max: 20000 });
+        const l = parseMm(lIn.value, { label: '長さ', min: 1, max: 30000 });
+        fieldError(wIn, w.ok ? null : w.error);
+        fieldError(lIn, l.ok ? null : l.error);
+        if (!w.ok || !l.ok) errs.push(w.error ?? l.error);
+        else if (price.ok) sheets.push({ width: w.value, length: l.value, price: price.value });
+      } else {
+        const lIn = row.querySelector('[name=s-len]');
+        if (!lIn.value.trim() && !priceIn.value.trim()) continue;
+        const l = parseMm(lIn.value, { label: '定尺', min: 1, max: 30000 });
+        if (l.ok && seen.has(l.value)) {
+          fieldError(lIn, '同じ定尺が重複しています');
+          errs.push('同じ定尺が重複しています');
+          continue;
+        }
+        fieldError(lIn, l.ok ? null : l.error);
+        if (!l.ok) errs.push(l.error);
+        else if (price.ok) {
+          seen.add(l.value);
+          stocks.push({ length: l.value, price: price.value });
+        }
+      }
+    }
+    if (t.kind === '1d' && stocks.length === 0 && errs.length === 0) errs.push('定尺を1つ以上登録してください');
+    let kerf = null;
+    let trim = null;
+    if (t.kind === '1d') {
+      const kIn = $('#m-kerf', form);
+      const tIn = $('#m-trim', form);
+      const k = parseMm(kIn.value, { label: '切断幅', allowEmpty: true, max: 1000 });
+      const tr = parseMm(tIn.value, { label: '端部切り落とし', allowEmpty: true, max: 1000 });
+      fieldError(kIn, k.ok ? null : k.error);
+      fieldError(tIn, tr.ok ? null : tr.error);
+      if (!k.ok) errs.push(k.error);
+      if (!tr.ok) errs.push(tr.error);
+      kerf = k.value ?? null;
+      trim = tr.value ?? null;
+    }
+    $('#form-errors', form).innerHTML = errs.length ? `<ul>${[...new Set(errs)].map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : '';
+    if (errs.length) return;
+    stocks.sort((a, b) => b.length - a.length);
+    await store.saveMaterial({
+      ...(found ?? {}),
+      type: t.id,
+      grade: $('#m-grade', form).value.trim(),
+      dims,
+      checkered: t.kind === '2d' ? $('#m-checkered', form).checked : undefined,
+      stocks: t.kind === '1d' ? stocks : [],
+      sheets: t.kind === '2d' ? sheets : undefined,
+      kerf,
+      trim,
+      note: $('#m-note', form).value.trim(),
+    });
+    toast('材料を保存しました');
+    navigate('/master');
+  });
+
+  $('#del', form)?.addEventListener('click', async () => {
+    const used = await store.materialUsage(found.id);
+    const msg = used.length
+      ? `この材料は ${used.length}件の案件（${used.slice(0, 3).join('、')}${used.length > 3 ? ' など' : ''}）で使われています。削除すると、その案件では材料を選び直す必要があります。削除しますか？`
+      : 'この材料を削除しますか？';
+    if (!confirm(msg)) return;
+    await store.deleteMaterial(found.id);
+    toast('削除しました');
+    navigate('/master');
+  });
+}
+
+return { renderMaster, renderMaterialEdit };
+})();
+
+// ---- js/ui/app.js
+const __m10 = (() => {
+const { LocalStore } = __m1;
+const { renderHome } = __m3;
+const { renderProject } = __m5;
+const { renderResult } = __m8;
+const { renderMaster, renderMaterialEdit } = __m9;
+const { esc } = __m2;
+const store = new LocalStore();
+const app = document.getElementById('app');
+
+const routes = [
+  [/^\/$/, renderHome, 'home'],
+  [/^\/p\/([\w-]+)$/, renderProject, 'home'],
+  [/^\/p\/([\w-]+)\/result$/, renderResult, 'home'],
+  [/^\/master$/, renderMaster, 'master'],
+  [/^\/master\/([\w-]+)$/, renderMaterialEdit, 'master'],
+];
+
+function navigate(path) {
+  if (location.hash.slice(1) === path) route();
+  else location.hash = path;
+}
+
+let renderSeq = 0;
+async function route() {
+  const seq = ++renderSeq;
+  const [path, query = ''] = (location.hash.slice(1) || '/').split('?');
+  const params = Object.fromEntries(new URLSearchParams(query));
+  for (const [re, view, nav] of routes) {
+    const m = path.match(re);
+    if (!m) continue;
+    document.querySelectorAll('[data-nav]').forEach((a) => a.classList.toggle('active', a.dataset.nav === nav));
+    try {
+      await view({ store, app, args: m.slice(1), params, navigate, isCurrent: () => seq === renderSeq });
+    } catch (e) {
+      console.error(e);
+      app.innerHTML = `<div class="card error-card"><h2>表示できませんでした</h2><p>${esc(e.message)}</p><a class="btn" href="#/">案件一覧へ</a></div>`;
+    }
+    if (!params.keepScroll) window.scrollTo(0, 0);
+    return;
+  }
+  app.innerHTML = `<div class="card"><h2>ページが見つかりません</h2><a class="btn" href="#/">案件一覧へ</a></div>`;
+}
+
+window.addEventListener('hashchange', route);
+route();
+
+return { navigate };
+})();
+</script>
+</body>
+</html>
